@@ -1,0 +1,956 @@
+{
+	"info": {
+		"_postman_id": "9111d643-7038-4247-88a7-bb4b503919fb",
+		"name": "airspot",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "10352308",
+		"_collection_link": "https://rubdave.postman.co/workspace/e6ec3a90-f2cd-4a97-8021-e04d4ed3c96a/collection/10352308-9111d643-7038-4247-88a7-bb4b503919fb?action=share&source=collection_link&creator=10352308"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "Register user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"FIREBASE_TOKEN\", response.data.access_token);",
+									"pm.environment.set(\"FIREBASE_UUID\", response.data.user.firebase_uid);",
+									"pm.environment.set(\"FIREBASE_TENANT_ID\", response.data.tenant.firebase_tenant_id);",
+									"pm.environment.set(\"TENANT_ID\", response.data.tenant.id);",
+									"pm.environment.set(\"TENANT_SLUG\", response.data.tenant.slug);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Ruben Nz\",\n    \"email\": \"test@test.com\",\n    \"company_name\": \"nz-llc\",\n    \"password\": \"123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/auth/register",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"FIREBASE_TOKEN\", response.data.access_token);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@test.com\",\n    \"password\": \"123456\",\n    \"tenant_slug\": \"{{TENANT_SLUG}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/auth/login",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get me",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/auth/me",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "exchange token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"BEARER_TOKEN\", response.data.id_token);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"custom_token\": \"{{FIREBASE_TOKEN}}\",\n    \"tenant_slug\": \"{{TENANT_SLUG}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/auth/exchange-token",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"auth",
+								"exchange-token"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "compaigns",
+			"item": [
+				{
+					"name": "create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"CREATED_CAMPAIGN_ID\", response.data.id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Summer Sale Campaign 2025\",\n  \"goal\": \"CONVERSIONS\",\n  \"budget_type\": \"DAILY\",\n  \"budget_amount\": 500.00,\n  \"start_date\": \"2025-06-01T00:00:00Z\",\n  \"end_date\": \"2025-08-31T23:59:59Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/campaigns",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"campaigns"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get by id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"CREATED_CAMPAIGN_ID\", response.data.id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Summer Sale Campaign 2025\",\n  \"goal\": \"CONVERSIONS\",\n  \"budget_type\": \"DAILY\",\n  \"budget_amount\": 500.00,\n  \"start_date\": \"2025-06-01T00:00:00Z\",\n  \"end_date\": \"2025-08-31T23:59:59Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/campaigns/{{CREATED_CAMPAIGN_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"campaigns",
+								"{{CREATED_CAMPAIGN_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"CREATED_CAMPAIGN_ID\", response.data.id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Summer Sale Campaign 2025\",\n  \"goal\": \"CONVERSIONS\",\n  \"budget_type\": \"DAILY\",\n  \"budget_amount\": 500.00,\n  \"start_date\": \"2025-06-01T00:00:00Z\",\n  \"end_date\": \"2025-08-31T23:59:59Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/campaigns?page=1&limit=10",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"campaigns"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "patch by id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Summer Sale Campaign 2027\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/campaigns/{{CREATED_CAMPAIGN_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"campaigns",
+								"{{CREATED_CAMPAIGN_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete by id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/campaigns/58a9845b-fd6c-41fe-818e-0fdb97185a34",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"campaigns",
+								"58a9845b-fd6c-41fe-818e-0fdb97185a34"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "creatives",
+			"item": [
+				{
+					"name": "create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"CREATED_CREATIVE_ID\", response.data.id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Summer Sale Video Ad\",\n  \"description\": \"30-second promotional video for summer sale campaign\",\n  \"file_name\": \"summer_sale_2025.mp4\",\n  \"s3_key\": \"creatives/videos/summer_sale_2025_1732467890.mp4\",\n  \"s3_bucket\": \"airspot-ctv-assets\",\n  \"file_size\": 15728640,\n  \"mime_type\": \"video/mp4\",\n  \"duration\": 30,\n  \"thumbnail_s3_key\": \"creatives/thumbnails/summer_sale_2025_thumb.jpg\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/creatives",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"creatives"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get by id",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/creatives/{{CREATED_CREATIVE_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"creatives",
+								"{{CREATED_CREATIVE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/creatives?page=1&limit=10",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"creatives"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "type",
+									"value": "IMAGE",
+									"disabled": true
+								},
+								{
+									"key": "format",
+									"value": "BANNER",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "patch by id",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Summer Banner Creative\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/creatives/{{CREATED_CREATIVE_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"creatives",
+								"{{CREATED_CREATIVE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete by id",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/creatives/{{CREATED_CREATIVE_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"creatives",
+								"{{CREATED_CREATIVE_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "ad-variations",
+			"item": [
+				{
+					"name": "create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"CREATED_AD_VARIATION_ID\", response.data.id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Summer Sale Ad Variant A\",\n    \"campaign_id\": \"{{CREATED_CAMPAIGN_ID}}\",\n    \"creative_id\": \"{{CREATED_CREATIVE_ID}}\",\n    \"bidding_strategy\": \"AUTOMATIC\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/ad-variations",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"ad-variations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get by id",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/ad-variations/{{CREATED_AD_VARIATION_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"ad-variations",
+								"{{CREATED_AD_VARIATION_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/ad-variations?page=1&limit=10",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"ad-variations"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "campaign_id",
+									"value": "{{CREATED_CAMPAIGN_ID}}",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "patch by id",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"headline\": \"Get 60% Off Summer Collection - Limited Time!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/ad-variations/{{CREATED_AD_VARIATION_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"ad-variations",
+								"{{CREATED_AD_VARIATION_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete by id",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/ad-variations/{{CREATED_AD_VARIATION_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"ad-variations",
+								"{{CREATED_AD_VARIATION_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "audiences",
+			"item": [
+				{
+					"name": "create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.environment.set(\"CREATED_AUDIENCE_ID\", response.data.id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"variation_id\": \"{{CREATED_AD_VARIATION_ID}}\",\n  \"type\": \"DEMOGRAPHIC\",\n  \"provider_id\": 1,\n  \"target_id\": \"age_25_34\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/audiences",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"audiences"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get by id",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/audiences/{{CREATED_AUDIENCE_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"audiences",
+								"{{CREATED_AUDIENCE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/audiences?page=1&limit=10",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"audiences"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "name",
+									"value": "Young",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "patch by id",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Young Professionals 25-40\",\n  \"targeting_criteria\": {\n    \"age_range\": {\n      \"min\": 25,\n      \"max\": 40\n    }\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URI}}/audiences/{{CREATED_AUDIENCE_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"audiences",
+								"{{CREATED_AUDIENCE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete by id",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-tenant-slug",
+								"value": "{{TENANT_SLUG}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URI}}/audiences/{{CREATED_AUDIENCE_ID}}",
+							"host": [
+								"{{BASE_URI}}"
+							],
+							"path": [
+								"audiences",
+								"{{CREATED_AUDIENCE_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{BEARER_TOKEN}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

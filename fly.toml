@@ -1,0 +1,40 @@
+# fly.toml app configuration file generated for airspot-dev-api on 2025-11-25T12:19:10+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'airspot-dev-api'
+primary_region = 'iad'
+
+[build]
+  dockerfile = './docker/Dockerfile.prod'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3000'
+  DB_TYPE = 'postgres'
+  DB_PORT = '5432'
+  REDIS_PORT = '6379'
+  SMTP_PORT = '587'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [http_service.concurrency]
+    type = 'connections'
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory = '2gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[[mounts]]
+  source = "airspot_videos"
+  destination = "/data/videos"

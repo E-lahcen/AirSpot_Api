@@ -1,0 +1,4 @@
+export const FIREBASE_ADMIN = Symbol('FIREBASE_ADMIN');
+export const FIREBASE_AUTH = Symbol('FIREBASE_AUTH');
+export const FIREBASE_FIRESTORE = Symbol('FIREBASE_FIRESTORE');
+export const FIREBASE_STORAGE = Symbol('FIREBASE_STORAGE');
