@@ -5,13 +5,17 @@ export class UserTenantEntity1764414355796 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_6e7205f2f240e1d73b327560bc"`,
+      `DROP INDEX IF EXISTS "public"."IDX_6e7205f2f240e1d73b327560bc"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "user_tenant" DROP CONSTRAINT "UQ_225891cc5883f1c35aa9091642c"`,
+      `ALTER TABLE "user_tenant" DROP CONSTRAINT IF EXISTS "UQ_225891cc5883f1c35aa9091642c"`,
     );
-    await queryRunner.query(`ALTER TABLE "user_tenant" DROP COLUMN "email"`);
-    await queryRunner.query(`ALTER TABLE "user_tenant" DROP COLUMN "slug"`);
+    await queryRunner.query(
+      `ALTER TABLE "user_tenant" DROP COLUMN IF EXISTS "email"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_tenant" DROP COLUMN IF EXISTS "slug"`,
+    );
     await queryRunner.query(
       `ALTER TABLE "user_tenant" ADD "email" character varying NOT NULL`,
     );
