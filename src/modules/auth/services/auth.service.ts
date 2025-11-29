@@ -16,6 +16,7 @@ import { RoleService } from '@app/modules/role/services/role.service';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { EnvironmentVariables } from '@app/core/validators';
+import { UserTenantService } from '@app/modules/user-tenant/services/user-tenant.service';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly tenantService: TenantService,
     private readonly roleService: RoleService,
     private readonly configService: ConfigService<EnvironmentVariables, true>,
+    private readonly userTenantService: UserTenantService,
   ) {}
 
   /**
@@ -147,10 +149,14 @@ export class AuthService {
 
       await this.tenantManagementService.setTenantOwner(tenant.id, user.id);
 
-      // Step 7: Ensure default roles exist and assign owner role to first user
+      await this.userTenantService.create({
+        user_id: user.id,
+        tenant_id: tenant.id,
+        email: dto.email,
+      });
+
       await this.roleService.ensureDefaultRoles();
 
-      // Step 8: Set custom claims on Firebase user (for role-based access)
       await this.auth
         .tenantManager()
         .authForTenant(firebaseTenant.tenantId)
@@ -161,7 +167,6 @@ export class AuthService {
           roles: [owner], // First user is the owner
         });
 
-      // Step 4: Create custom token for the user (client will exchange for ID token)
       const tenantAuth = this.auth
         .tenantManager()
         .authForTenant(tenant.firebase_tenant_id);
@@ -182,12 +187,6 @@ export class AuthService {
         },
       };
     } catch (error) {
-      // If anything fails, we should ideally rollback
-      // For now, just rethrow
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-
       throw new BadRequestException({
         message: 'Registration failed',
         errors: [

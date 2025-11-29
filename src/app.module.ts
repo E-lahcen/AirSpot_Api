@@ -23,6 +23,7 @@ import { AudienceModule } from './modules/audience/audience.module';
 import { VideoDownloadModule } from './modules/video-download/video-download.module';
 import { TemplateModule } from './modules/template/template.module';
 import { StoryboardModule } from './modules/storyboard/storyboard.module';
+import { UserTenantModule } from './modules/user-tenant/user-tenant.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { StoryboardModule } from './modules/storyboard/storyboard.module';
         maxQueryExecutionTime: 10000, // Log queries that take longer than 10 seconds
       }),
     }),
+    UserTenantModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -129,6 +131,7 @@ export class AppModule implements NestModule, OnModuleInit {
         { path: '/docs/', method: RequestMethod.ALL },
         { path: '/auth/register', method: RequestMethod.POST, version: '1' },
         { path: '/auth/login', method: RequestMethod.POST, version: '1' },
+        { path: '/user-tenants', method: RequestMethod.GET, version: '1' },
         {
           path: '/auth/exchange-token',
           method: RequestMethod.POST,
