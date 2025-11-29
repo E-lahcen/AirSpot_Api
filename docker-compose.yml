@@ -43,22 +43,7 @@ services:
         - action: rebuild
           path: ./package-lock.json
     depends_on:
-      - postgres
       - redis
-    networks:
-      - shared
-
-  postgres:
-    image: postgres:17
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     networks:
       - shared
 
@@ -80,13 +65,11 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD-admin}
     ports:
       - "5050:80"
-    depends_on:
-      - postgres
     networks:
       - shared
 
 volumes:
-  postgres_data:
+  #postgres_data:
   redis_data:
 
 networks:
