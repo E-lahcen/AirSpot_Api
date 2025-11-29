@@ -1,0 +1,153 @@
+/**
+ * Create audience // it seems working fine need just to test it 
+
+    data = {
+        id: string,
+        name: string,
+        category: string,
+        size: string,
+        reached: string,
+        platforms: string[],
+        campaigns: string,
+        selectedLocations: string[],
+        selectedInterests: string[],
+        ageRange: number[],
+        selectedGenders: string[],
+        createdAt: new Date().toISOString(),
+    }
+
+/**
+ * Create Storyboard I guess this one need some changes
+
+    Scene = {
+        id: number;
+        name: string;
+        title: string;
+        description: string;
+        audioPrompt: string;
+        audioUrl?: string;
+        imagePrompt: string;
+        imageUrl?: string;
+        imageStyle?: string;
+    }
+
+    data = {
+        id: string,
+        title: string,
+        duration: string,
+        scenes: string,
+        createdAt: new Date().toISOString(),
+        scenesData: Scene[],
+        videoUrl: string,
+    }
+
+
+/**
+ * Create campaign
+
+    audienceData = {
+        locations: string[];
+        interests: string[];
+        demographics: number[];
+        genders: string[];
+    }
+
+    newCampaign = {
+        id: string,
+        name: string,
+        selectedGoal: string,
+        startDate: string,
+        endDate: string,
+        selectedDays: {},
+        budgetAmount: string,
+        audience: audienceData,
+        selectedBroadcastTV: string[],
+        selectedStreaming: string[],
+        biddingStrategy: string,
+        creativeData: {},
+        status: string,
+        impressions: number,
+        reach: number,
+        spend: number,
+        roi: string,
+    }
+
+
+            {
+                "id": "b116f321-9f89-4d45-86ca-bc6832ea6814",
+                "name": "Summer Sale 2025",
+                "organization_id": "95f48ea3-1358-4ad2-9110-f427c10ef521",
+                "goal": "AWARENESS",
+                "budget_type": "LIFETIME",
+                "budget_amount": "10000.00",
+                "start_date": "2025-06-01T00:00:00.000Z",
+                "end_date": "2025-08-31T23:59:59.000Z",
+                "status": "DRAFT",
+                "owner_id": "b43b08e7-317b-46f8-8a5c-602ef5d89cc1",
+                "published_at": null,
+                "created_at": "2025-11-29T17:43:49.415Z",
+                "updated_at": "2025-11-29T17:43:49.415Z",
+                "deleted_at": null,
+            }
+    },
+
+/**
+ *  Create Creative 
+
+    newCreative = {
+        "organization_id": "decadc09-8d48-4db2-8966-b56512717f3d",
+        "name": "Untitled Template",
+        "description": "description",
+        "orientation": "vertical",
+        "theme": "blue",
+        "video_position": "left",
+        "brand_name": "DBA",
+        "price": "100",
+        "product_name": "ADS",
+        "features": [
+            "Game"
+        ],
+        "show_qr_code": false,
+        "qr_code_text": "dba.ma/ads",
+        "logo_path": "templates/brand/images/339cbbc1-27ab-416e-82e4-645e594dd404.jpeg",
+        "product_image_path": "templates/brand/images/cfe50571-4f8c-459a-97ad-3f095f635c2b.png",
+        "video_path": "creatives/brand/04ca3950-017b-469b-90a7-df9e9020e414.mp4",
+        "template_image_path": "templates/brand/templates/a2f7a4bf-3865-49bb-bfe5-170ba2c30aa5.png",
+        "owner_id": "0f88478f-e15c-4707-b561-f7d4060dff56",
+        "filename": "a2f7a4bf-3865-49bb-bfe5-170ba2c30aa5.png",
+        "campaign_count": 0
+    }
+*/
+
+
+/**
+ * 
+ * This is the correct object when user is creating a creative 
+
+{
+    "organization_id": "ea10e5e9-0592-4238-9e16-4bb205a57368",
+    "name": "Summer",
+    "description": null,
+    "orientation": "vertical",
+    "theme": "blue",
+    "video_position": "left",
+    "brand_name": "DBA",
+    "price": "100",
+    "product_name": "ADS",
+    "features": [
+        "Foot"
+    ],
+    "show_qr_code": false,
+    "qr_code_text": "dba.ma/ads",
+    "logo_path": "templates/apps-dev-agency/images/99145267-bb2e-4664-90c3-9581c2892e76.jpeg",
+    "product_image_path": "templates/apps-dev-agency/images/3e571e64-f54c-4aca-acd4-1b066ec4c78c.png",
+    "video_path": "creatives/apps-dev-agency/4ba6dade-9d47-4b7a-8540-a52469521fc0.mp4",
+    "template_image_path": "templates/apps-dev-agency/templates/3c4d53f2-264c-447a-9b05-0d7e8ca2a94d.png",
+    "owner_id": "019911af-8e68-4731-8e55-7b03ea03af6e",
+    "filename": "3c4d53f2-264c-447a-9b05-0d7e8ca2a94d.png",
+    "campaign_count": 0
+}
+
+The same map will be in campaign when user is creating a campaign
+ */
+    

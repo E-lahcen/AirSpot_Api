@@ -23,6 +23,7 @@ import { AudienceModule } from './modules/audience/audience.module';
 import { VideoDownloadModule } from './modules/video-download/video-download.module';
 import { TemplateModule } from './modules/template/template.module';
 import { StoryboardModule } from './modules/storyboard/storyboard.module';
+import { OrganisationModule } from './modules/organisation/organisation.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { StoryboardModule } from './modules/storyboard/storyboard.module';
     VideoDownloadModule,
     TemplateModule,
     StoryboardModule,
+    OrganisationModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

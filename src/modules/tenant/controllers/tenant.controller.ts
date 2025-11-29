@@ -98,52 +98,7 @@ export class TenantController {
     return tenant;
   }
 
-  @Post()
-  @ApiOperation({ summary: 'Create a new organization' })
-  @ApiResponse({
-    status: 201,
-    description: 'Organization created successfully',
-  })
-  @Roles('owner', 'admin')
-  async createOrganization(
-    @Body() dto: CreateOrganizationDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const existing = await this.tenantManagementService.findByCompanyName(
-      dto.name,
-    );
-
-    if (existing) {
-      throw new ConflictException({
-        message: 'Organization already exists!',
-        errors: [
-          {
-            code: 'ORGANIZATION_EXISTS',
-            message: 'An organization with this name already exists',
-          },
-        ],
-      });
-    }
-
-    const tenant = await this.tenantManagementService.createTenant({
-      companyName: dto.name,
-      ownerEmail: user.email,
-      firebaseTenantId: user.firebaseTenantId,
-      ownerId: user.id,
-      slug: dto.slug,
-      description: dto.description,
-      logo: dto.logo,
-      region: dto.region,
-      defaultRole: dto.defaultRole,
-      enforceDomain: dto.enforceDomain ?? false,
-      domain: dto.enforceDomain ? dto.domain : undefined,
-    });
-
-    return {
-      message: 'Organization created successfully',
-      tenant,
-    };
-  }
+  
 
   @Get('members')
   @ApiOperation({ summary: 'Get all members of the organization' })

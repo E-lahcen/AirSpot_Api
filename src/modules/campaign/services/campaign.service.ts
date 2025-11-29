@@ -7,6 +7,8 @@ import { UpdateCampaignDto } from '../dto/update-campaign.dto';
 import { FilterCampaignDto } from '../dto/filter-campaign.dto';
 import { paginate, Pagination } from 'nestjs-typeorm-paginate';
 import { FindOptionsWhere, Like } from 'typeorm';
+import { BadRequestException } from '@nestjs/common';
+import { ALLOWED_GOALS, levenshtein } from '../helper/goalAdapter';
 
 @Injectable()
 export class CampaignService {
@@ -17,6 +19,9 @@ export class CampaignService {
     owner_id: string,
     organization_id: string,
   ): Promise<Campaign> {
+    // normalize the incoming selectedGoal robustly here to guarantee DB-safe enum
+    createCampaignDto.selectedGoal = this.mapSelectedGoal(createCampaignDto.selectedGoal);
+
     const campaignRepository =
       await this.tenantConnection.getRepository(Campaign);
 
@@ -134,5 +139,44 @@ export class CampaignService {
     const campaignRepository =
       await this.tenantConnection.getRepository(Campaign);
     await campaignRepository.remove(campaign);
+  }
+
+  private mapSelectedGoal(input?: string): string {
+    if (!input) {
+      throw new BadRequestException('selectedGoal is required');
+    }
+
+    // quick alias regexes for common misspellings / variants
+    const aliases: Array<{ re: RegExp; goal: string }> = [
+      { re: /(awareness|awarness|aware ?ness|awar?ness)/i, goal: 'AWARENESS' },
+      { re: /(conversion|conversions|convert)/i, goal: 'CONVERSIONS' },
+      { re: /(traffic|traffik)/i, goal: 'TRAFFIC' },
+      { re: /(retarget|retargeting)/i, goal: 'RETARGET' },
+      { re: /(app[\s_-]?revenue|apprevenue)/i, goal: 'APP_REVENUE' },
+    ];
+
+    for (const a of aliases) {
+      if (a.re.test(input)) return a.goal;
+    }
+
+    // normalize and try exact enum match
+    const candidate = input.trim().toUpperCase().replace(/[\s-]+/g, '_');
+    if (ALLOWED_GOALS.includes(candidate)) return candidate;
+
+    // fuzzy fallback (small typos)
+    let best = { goal: '', dist: Number.POSITIVE_INFINITY };
+    for (const g of ALLOWED_GOALS) {
+      const d = levenshtein(candidate, g);
+      if (d < best.dist) best = { goal: g, dist: d };
+    }
+
+    const threshold = Math.max(1, Math.floor(best.goal.length * 0.25)); // allow small typos
+    if (best.dist <= threshold) return best.goal;
+
+    throw new BadRequestException(
+      `Invalid selectedGoal '${input}'. Allowed values: ${ALLOWED_GOALS.join(
+        ', ',
+      )}`,
+    );
   }
 }

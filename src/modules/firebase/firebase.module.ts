@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as admin from 'firebase-admin';
 import { FIREBASE_ADMIN, FIREBASE_AUTH } from './firebase.constants';
+import { FirebaseService } from './services/firebase.service';
 
 @Module({
   providers: [
@@ -34,7 +35,8 @@ import { FIREBASE_ADMIN, FIREBASE_AUTH } from './firebase.constants';
         return app.auth();
       },
     },
+    FirebaseService
   ],
-  exports: [FIREBASE_ADMIN, FIREBASE_AUTH],
+  exports: [FIREBASE_ADMIN, FIREBASE_AUTH, FirebaseService],
 })
 export class FirebaseModule {}
