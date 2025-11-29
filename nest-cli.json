@@ -10,7 +10,7 @@
         "outDir": "dist"
       }
     ],
-    "watchAssets": true,
+    "watchAssets": false,
     "plugins": [
       {
         "name": "@nestjs/swagger",
