@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { QueryRunner } from 'typeorm';
 
 /**
@@ -9,6 +8,11 @@ export interface TenantMigration {
   name: string;
   up: (queryRunner: QueryRunner, schema: string) => Promise<void>;
   down: (queryRunner: QueryRunner, schema: string) => Promise<void>;
+  /**
+   * Optional: skip this migration for tenant schemas
+   * Useful for migrations that only apply to public schema (e.g., user_tenant table)
+   */
+  skip?: boolean;
 }
 
 /**
@@ -338,97 +342,6 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
         )
       `);
 
-      // Create templates table
-      await queryRunner.query(`
-        CREATE TABLE "${schema}".templates (
-          "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-          "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-          "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-          "deleted_at" TIMESTAMP,
-          "organization_id" uuid NOT NULL,
-          "name" character varying(255) NOT NULL,
-          "description" text,
-          "orientation" character varying(50) NOT NULL,
-          "theme" character varying(100) NOT NULL,
-          "video_position" character varying(50) NOT NULL,
-          "brand_name" character varying(255) NOT NULL,
-          "price" character varying(50) NOT NULL,
-          "product_name" character varying(255) NOT NULL,
-          "features" text[] DEFAULT '{}',
-          "show_qr_code" boolean NOT NULL DEFAULT false,
-          "qr_code_text" character varying(500),
-          "logo_path" character varying(500),
-          "product_image_path" character varying(500),
-          "video_path" character varying(500),
-          "template_image_path" character varying(500),
-          "owner_id" uuid NOT NULL,
-          CONSTRAINT "PK_${schema}_templates" PRIMARY KEY ("id")
-        )
-      `);
-
-      // Add foreign key constraint for templates owner_id
-      await queryRunner.query(`
-        ALTER TABLE "${schema}".templates
-        ADD CONSTRAINT "FK_${schema}_templates_owner"
-        FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-        ON DELETE NO ACTION ON UPDATE NO ACTION
-      `);
-
-      // Create storyboards table (check if it exists first)
-      const storyboardsTableExists = await queryRunner.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = '${schema}' 
-          AND table_name = 'storyboards'
-        )
-      `);
-
-      if (!storyboardsTableExists[0]?.exists) {
-        await queryRunner.query(`
-          CREATE TABLE "${schema}".storyboards (
-            "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-            "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "deleted_at" TIMESTAMP,
-            "organization_id" uuid NOT NULL,
-            "title" character varying(255) NOT NULL,
-            "duration" character varying(50) NOT NULL,
-            "scenes" text NOT NULL,
-            "scenes_data" jsonb NOT NULL DEFAULT '[]',
-            "video_url" character varying(500) NOT NULL,
-            "owner_id" uuid NOT NULL,
-            CONSTRAINT "PK_${schema}_storyboards" PRIMARY KEY ("id")
-          )
-        `);
-
-        // Add foreign key constraint for storyboards owner_id
-        await queryRunner.query(`
-          ALTER TABLE "${schema}".storyboards
-          ADD CONSTRAINT "FK_${schema}_storyboards_owner"
-          FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-          ON DELETE NO ACTION ON UPDATE NO ACTION
-        `);
-      } else {
-        // Table exists, check if foreign key constraint exists
-        const fkExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.table_constraints 
-            WHERE table_schema = '${schema}' 
-            AND table_name = 'storyboards'
-            AND constraint_name = 'FK_${schema}_storyboards_owner'
-          )
-        `);
-
-        if (!fkExists[0]?.exists) {
-          await queryRunner.query(`
-            ALTER TABLE "${schema}".storyboards
-            ADD CONSTRAINT "FK_${schema}_storyboards_owner"
-            FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-            ON DELETE NO ACTION ON UPDATE NO ACTION
-          `);
-        }
-      }
-
       // Create ad_variations bidding strategy enum
       await queryRunner.query(`
         CREATE TYPE "${schema}".ad_variations_bidding_strategy_enum AS ENUM(
@@ -551,7 +464,6 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       );
 
       // Drop tables
-      await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".templates`);
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".user_roles`);
       await queryRunner.query(
         `DROP TABLE IF EXISTS "${schema}".target_group_selections`,
@@ -563,7 +475,6 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       await queryRunner.query(
         `DROP TYPE IF EXISTS "${schema}".ad_variations_bidding_strategy_enum`,
       );
-      await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".storyboards`);
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".creatives`);
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".campaigns`);
       await queryRunner.query(
@@ -753,11 +664,6 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       `);
     },
     down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
-      // Drop foreign key constraints for owner_id in templates
-      await queryRunner.query(
-        `ALTER TABLE "${schema}".templates DROP CONSTRAINT IF EXISTS "FK_${schema}_templates_owner"`,
-      );
-
       // Drop foreign key constraints for owner_id in creatives
       await queryRunner.query(
         `ALTER TABLE "${schema}".creatives DROP CONSTRAINT IF EXISTS "FK_${schema}_creatives_owner"`,
@@ -810,160 +716,54 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
     },
   },
   {
-    version: 1764243000000,
-    name: 'AddOrganizationMetadataToTenants',
-    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
-      // Check if tenants table exists in this schema (it might not exist in tenant schemas)
-      const tenantsTableExists = await queryRunner.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = '${schema}' 
-          AND table_name = 'tenants'
-        )
-      `);
-
-      if (tenantsTableExists[0]?.exists) {
-        // Add description column if it doesn't exist
-        const descriptionExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.columns 
-            WHERE table_schema = '${schema}' 
-            AND table_name = 'tenants' 
-            AND column_name = 'description'
-          )
-        `);
-        if (!descriptionExists[0]?.exists) {
-          await queryRunner.query(
-            `ALTER TABLE "${schema}".tenants ADD "description" text`,
-          );
-        }
-
-        // Add logo column if it doesn't exist
-        const logoExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.columns 
-            WHERE table_schema = '${schema}' 
-            AND table_name = 'tenants' 
-            AND column_name = 'logo'
-          )
-        `);
-        if (!logoExists[0]?.exists) {
-          await queryRunner.query(
-            `ALTER TABLE "${schema}".tenants ADD "logo" text`,
-          );
-        }
-
-        // Add region column if it doesn't exist
-        const regionExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.columns 
-            WHERE table_schema = '${schema}' 
-            AND table_name = 'tenants' 
-            AND column_name = 'region'
-          )
-        `);
-        if (!regionExists[0]?.exists) {
-          await queryRunner.query(
-            `ALTER TABLE "${schema}".tenants ADD "region" character varying(100)`,
-          );
-        }
-
-        // Add default_role column if it doesn't exist
-        const defaultRoleExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.columns 
-            WHERE table_schema = '${schema}' 
-            AND table_name = 'tenants' 
-            AND column_name = 'default_role'
-          )
-        `);
-        if (!defaultRoleExists[0]?.exists) {
-          await queryRunner.query(
-            `ALTER TABLE "${schema}".tenants ADD "default_role" character varying(50)`,
-          );
-        }
-
-        // Add enforce_domain column if it doesn't exist
-        const enforceDomainExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.columns 
-            WHERE table_schema = '${schema}' 
-            AND table_name = 'tenants' 
-            AND column_name = 'enforce_domain'
-          )
-        `);
-        if (!enforceDomainExists[0]?.exists) {
-          await queryRunner.query(
-            `ALTER TABLE "${schema}".tenants ADD "enforce_domain" boolean NOT NULL DEFAULT false`,
-          );
-        }
-
-        // Add domain column if it doesn't exist
-        const domainExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.columns 
-            WHERE table_schema = '${schema}' 
-            AND table_name = 'tenants' 
-            AND column_name = 'domain'
-          )
-        `);
-        if (!domainExists[0]?.exists) {
-          await queryRunner.query(
-            `ALTER TABLE "${schema}".tenants ADD "domain" character varying(255)`,
-          );
-        }
-      }
+    version: 1764414355796,
+    name: 'UserTenantEntity',
+    skip: true,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    up: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
+      // This migration only applies to public schema, not tenant schemas
+      // Skipped for tenant schemas via skip: true
     },
-    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
-      // Check if tenants table exists in this schema
-      const tenantsTableExists = await queryRunner.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = '${schema}' 
-          AND table_name = 'tenants'
-        )
-      `);
-
-      if (tenantsTableExists[0]?.exists) {
-        await queryRunner.query(
-          `ALTER TABLE "${schema}".tenants DROP COLUMN IF EXISTS "domain"`,
-        );
-        await queryRunner.query(
-          `ALTER TABLE "${schema}".tenants DROP COLUMN IF EXISTS "enforce_domain"`,
-        );
-        await queryRunner.query(
-          `ALTER TABLE "${schema}".tenants DROP COLUMN IF EXISTS "default_role"`,
-        );
-        await queryRunner.query(
-          `ALTER TABLE "${schema}".tenants DROP COLUMN IF EXISTS "region"`,
-        );
-        await queryRunner.query(
-          `ALTER TABLE "${schema}".tenants DROP COLUMN IF EXISTS "logo"`,
-        );
-        await queryRunner.query(
-          `ALTER TABLE "${schema}".tenants DROP COLUMN IF EXISTS "description"`,
-        );
-      }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    down: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
+      // This migration only applies to public schema, not tenant schemas
+      // Skipped for tenant schemas via skip: true
     },
   },
   {
-    version: 1732233600001, // New migration to add templates table
-    name: 'AddTemplatesTable',
+    version: 1764415176775,
+    name: 'UserTenantEntityUpdated',
+    skip: true,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    up: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
+      // This migration only applies to public schema, not tenant schemas
+      // Skipped for tenant schemas via skip: true
+    },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    down: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
+      // This migration only applies to public schema, not tenant schemas
+      // Skipped for tenant schemas via skip: true
+    },
+  },
+  {
+    version: 1764243000000,
+    name: 'AddOrganizationMetadataToTenants',
+    skip: true,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    up: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
+      // This migration only applies to public schema (tenants table), not tenant schemas
+      // Skipped for tenant schemas via skip: true
+    },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    down: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
+      // This migration only applies to public schema (tenants table), not tenant schemas
+      // Skipped for tenant schemas via skip: true
+    },
+  },
+  {
+    version: 1764438816992,
+    name: 'TemplateStoryboardEntities',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
-      // Check if templates table already exists
-      const tableExists = await queryRunner.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = '${schema}' 
-          AND table_name = 'templates'
-        )
-      `);
-
-      if (tableExists[0]?.exists) {
-        // Table already exists, skip
-        return;
-      }
-
       // Create templates table
       await queryRunner.query(`
         CREATE TABLE "${schema}".templates (
@@ -980,7 +780,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
           "brand_name" character varying(255) NOT NULL,
           "price" character varying(50) NOT NULL,
           "product_name" character varying(255) NOT NULL,
-          "features" text[] DEFAULT '{}',
+          "features" text array NOT NULL DEFAULT '{}',
           "show_qr_code" boolean NOT NULL DEFAULT false,
           "qr_code_text" character varying(500),
           "logo_path" character varying(500),
@@ -992,7 +792,25 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
         )
       `);
 
-      // Add foreign key constraint for templates owner_id
+      // Create storyboards table
+      await queryRunner.query(`
+        CREATE TABLE "${schema}".storyboards (
+          "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+          "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "deleted_at" TIMESTAMP,
+          "organization_id" uuid NOT NULL,
+          "title" character varying(255) NOT NULL,
+          "duration" character varying(50) NOT NULL,
+          "scenes" text NOT NULL,
+          "scenes_data" jsonb NOT NULL,
+          "video_url" character varying(500) NOT NULL,
+          "owner_id" uuid NOT NULL,
+          CONSTRAINT "PK_${schema}_storyboards" PRIMARY KEY ("id")
+        )
+      `);
+
+      // Add foreign key constraints for templates
       await queryRunner.query(`
         ALTER TABLE "${schema}".templates
         ADD CONSTRAINT "FK_${schema}_templates_owner"
@@ -1000,135 +818,26 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
         ON DELETE NO ACTION ON UPDATE NO ACTION
       `);
 
-      // Check if storyboards table already exists
-      const storyboardsTableExists = await queryRunner.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = '${schema}' 
-          AND table_name = 'storyboards'
-        )
+      // Add foreign key constraints for storyboards
+      await queryRunner.query(`
+        ALTER TABLE "${schema}".storyboards
+        ADD CONSTRAINT "FK_${schema}_storyboards_owner"
+        FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
+        ON DELETE NO ACTION ON UPDATE NO ACTION
       `);
-
-      if (!storyboardsTableExists[0]?.exists) {
-        // Create storyboards table
-        await queryRunner.query(`
-          CREATE TABLE "${schema}".storyboards (
-            "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-            "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "deleted_at" TIMESTAMP,
-            "organization_id" uuid NOT NULL,
-            "title" character varying(255) NOT NULL,
-            "duration" character varying(50) NOT NULL,
-            "scenes" text NOT NULL,
-            "scenes_data" jsonb NOT NULL DEFAULT '[]',
-            "video_url" character varying(500) NOT NULL,
-            "owner_id" uuid NOT NULL,
-            CONSTRAINT "PK_${schema}_storyboards" PRIMARY KEY ("id")
-          )
-        `);
-
-        // Add foreign key constraint for storyboards owner_id
-        await queryRunner.query(`
-          ALTER TABLE "${schema}".storyboards
-          ADD CONSTRAINT "FK_${schema}_storyboards_owner"
-          FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-          ON DELETE NO ACTION ON UPDATE NO ACTION
-        `);
-      }
     },
     down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
-      // Drop foreign key constraint for storyboards
+      // Drop foreign key constraints
       await queryRunner.query(
         `ALTER TABLE "${schema}".storyboards DROP CONSTRAINT IF EXISTS "FK_${schema}_storyboards_owner"`,
       );
-
-      // Drop foreign key constraint for templates
       await queryRunner.query(
         `ALTER TABLE "${schema}".templates DROP CONSTRAINT IF EXISTS "FK_${schema}_templates_owner"`,
       );
 
-      // Drop storyboards table
+      // Drop tables
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".storyboards`);
-
-      // Drop templates table
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".templates`);
-    },
-  },
-  {
-    version: 1764243000001, // Ensure storyboards table exists
-    name: 'EnsureStoryboardsTable',
-    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
-      // Check if storyboards table exists
-      const tableExists = await queryRunner.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = '${schema}'
-          AND table_name = 'storyboards'
-        )
-      `);
-
-      if (!tableExists[0]?.exists) {
-        // Create storyboards table
-        await queryRunner.query(`
-          CREATE TABLE "${schema}".storyboards (
-            "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-            "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "deleted_at" TIMESTAMP,
-            "organization_id" uuid NOT NULL,
-            "title" character varying(255) NOT NULL,
-            "duration" character varying(50) NOT NULL,
-            "scenes" text NOT NULL,
-            "scenes_data" jsonb NOT NULL DEFAULT '[]',
-            "video_url" character varying(500) NOT NULL,
-            "owner_id" uuid NOT NULL,
-            CONSTRAINT "PK_${schema}_storyboards" PRIMARY KEY ("id")
-          )
-        `);
-
-        // Add foreign key constraint for storyboards owner_id
-        const fkExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.table_constraints
-            WHERE table_schema = '${schema}'
-            AND table_name = 'storyboards'
-            AND constraint_name = 'FK_${schema}_storyboards_owner'
-          )
-        `);
-
-        if (!fkExists[0]?.exists) {
-          await queryRunner.query(`
-            ALTER TABLE "${schema}".storyboards
-            ADD CONSTRAINT "FK_${schema}_storyboards_owner"
-            FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-            ON DELETE NO ACTION ON UPDATE NO ACTION
-          `);
-        }
-      } else {
-        // Table exists, ensure foreign key constraint exists
-        const fkExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.table_constraints
-            WHERE table_schema = '${schema}'
-            AND table_name = 'storyboards'
-            AND constraint_name = 'FK_${schema}_storyboards_owner'
-          )
-        `);
-
-        if (!fkExists[0]?.exists) {
-          await queryRunner.query(`
-            ALTER TABLE "${schema}".storyboards
-            ADD CONSTRAINT "FK_${schema}_storyboards_owner"
-            FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-            ON DELETE NO ACTION ON UPDATE NO ACTION
-          `);
-        }
-      }
-    },
-    down: async (): Promise<void> => {
-      // This migration only ensures the table exists, so rollback is a no-op
-      // The table should not be dropped as it may have been created by other migrations
     },
   },
 ];

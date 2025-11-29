@@ -1,13 +1,18 @@
+import { FirebaseService } from '@app/modules/firebase/services/firebase.service';
 import { TenantManagementService } from '@app/modules/tenant';
 import { ConflictException, Injectable } from '@nestjs/common';
+import { CreateOrganizationDto } from '../dto/create-organization.dto';
 
 @Injectable()
 export class OrganisationService {
-    constructor(private readonly tenantManagementService: TenantManagementService){}
+    constructor(
+        private readonly tenantManagementService: TenantManagementService,
+        private readonly firebaseService: FirebaseService,
+    ){}
 
-    async createOrganization(dto: any, user: any) {
+    async createOrganization(createOrganizationDto: CreateOrganizationDto, user: any) {
         const existing = await this.tenantManagementService.findByCompanyName(
-          dto.name,
+          createOrganizationDto.name,
         );
     
         if (existing) {
@@ -22,25 +27,23 @@ export class OrganisationService {
           });
         }
 
-        
+        // Step 2: Create Firebase tenant with formatted display name
+        const firebaseTenant = await this.firebaseService.createTenant(
+            createOrganizationDto.name,
+        );
     
-        const tenant = await this.tenantManagementService.createTenant({
-          companyName: dto.name,
+        return this.tenantManagementService.createTenant({
+          companyName: createOrganizationDto.name,
           ownerEmail: user.email,
-          firebaseTenantId: user.firebaseTenantId,
+          firebaseTenantId: firebaseTenant.tenantId,
           ownerId: user.id,
-          slug: dto.slug,
-          description: dto.description,
-          logo: dto.logo,
-          region: dto.region,
-          defaultRole: dto.defaultRole,
-          enforceDomain: dto.enforceDomain ?? false,
-          domain: dto.enforceDomain ? dto.domain : undefined,
+          slug: createOrganizationDto.slug,
+          description: createOrganizationDto.description,
+          logo: createOrganizationDto.logo,
+          region: createOrganizationDto.region,
+          defaultRole: createOrganizationDto.defaultRole,
+          enforceDomain: createOrganizationDto.enforceDomain ?? false,
+          domain: createOrganizationDto.enforceDomain ? createOrganizationDto.domain : undefined,
         });
-    
-        return {
-          message: 'Organization created successfully',
-          tenant,
-        };
     }
 }
