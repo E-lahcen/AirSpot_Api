@@ -67,9 +67,22 @@ services:
       - "5051:80"
     networks:
       - shared
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shared
 
 volumes:
-  #postgres_data:
+  postgres_data:
   redis_data:
 
 networks:
