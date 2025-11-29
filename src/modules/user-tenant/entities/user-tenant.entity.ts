@@ -2,7 +2,7 @@ import { BaseEntity } from '@app/common/entities/base.entity';
 import { Tenant } from '@app/modules/tenant/entities/tenant.entity';
 import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 
-@Entity('user_tenant')
+@Entity({ name: 'user_tenant', schema: 'public' })
 @Unique(['user_id', 'tenant_id'])
 export class UserTenant extends BaseEntity {
   @Column()
