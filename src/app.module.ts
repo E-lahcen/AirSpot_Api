@@ -60,6 +60,15 @@ import { StoryboardModule } from './modules/storyboard/storyboard.module';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/[0-9]*-*.{ts,js}'],
         migrationsRun: true,
+        // Connection pool configuration to prevent connection exhaustion
+        extra: {
+          max: 20, // Maximum number of connections in pool
+          min: 2, // Minimum number of connections in pool
+          idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+          connectionTimeoutMillis: 5000, // Timeout for acquiring connection (5 seconds)
+        },
+        // Query timeout to prevent long-running queries from holding connections
+        maxQueryExecutionTime: 10000, // Log queries that take longer than 10 seconds
       }),
     }),
   ],
