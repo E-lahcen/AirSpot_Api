@@ -12,6 +12,13 @@ export interface CreateTenantData {
   ownerEmail: string;
   firebaseTenantId: string;
   ownerId?: string;
+  slug?: string;
+  description?: string;
+  logo?: string;
+  region?: string;
+  defaultRole?: string;
+  enforceDomain?: boolean;
+  domain?: string;
 }
 
 @Injectable()
