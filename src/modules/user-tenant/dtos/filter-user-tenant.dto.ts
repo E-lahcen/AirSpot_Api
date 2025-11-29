@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsUUID } from 'class-validator';
+import { IsDefined, IsEmail, IsOptional, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '@app/common/dtos';
 
@@ -23,7 +23,7 @@ export class FilterUserTenantDto extends PaginationDto {
     description: 'Filter by email',
     example: 'user@example.com',
   })
-  @IsOptional()
+  @IsDefined()
   @IsEmail()
-  email?: string;
+  email: string;
 }
