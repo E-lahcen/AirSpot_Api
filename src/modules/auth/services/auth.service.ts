@@ -16,6 +16,7 @@ import { RoleService } from '@app/modules/role/services/role.service';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { EnvironmentVariables } from '@app/core/validators';
+import { UserTenantService } from '@app/modules/user-tenant/services/user-tenant.service';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly tenantService: TenantService,
     private readonly roleService: RoleService,
     private readonly configService: ConfigService<EnvironmentVariables, true>,
+    private readonly userTenantService: UserTenantService,
   ) {}
 
   /**
@@ -73,6 +75,7 @@ export class AuthService {
       // Step 1: Check if company already has a tenant
       const existingTenant =
         await this.tenantManagementService.findByCompanyName(dto.company_name);
+
       if (existingTenant) {
         throw new ConflictException({
           message: 'Company already exists',
@@ -147,6 +150,12 @@ export class AuthService {
 
       await this.tenantManagementService.setTenantOwner(tenant.id, user.id);
 
+      await this.userTenantService.create({
+        user_id: user.id,
+        tenant_id: tenant.id,
+        email: dto.email,
+      });
+
       // Step 7: Ensure default roles exist and assign owner role to first user
       await this.roleService.ensureDefaultRoles();
 
@@ -164,13 +173,13 @@ export class AuthService {
       // Step 4: Create custom token for the user (client will exchange for ID token)
       const tenantAuth = this.auth
         .tenantManager()
-        .authForTenant(tenant.firebase_tenant_id);
+        .authForTenant(firebaseTenant.tenantId);
 
       const accessToken = await tenantAuth.createCustomToken(firebaseUser.uid, {
         slug: tenant.slug,
         tenantId: tenant.id,
         roles: [owner],
-        firebaseTenantId: tenant.firebase_tenant_id,
+        firebaseTenantId: firebaseTenant.tenantId,
       });
 
       return {
@@ -406,81 +415,6 @@ export class AuthService {
       id_token: data.idToken,
       refresh_token: data.refreshToken,
       expires_in: data.expiresIn,
-    };
-  }
-
-  async refreshToken(refreshToken: string, tenantSlug: string) {
-    const apiKey = this.configService.get<string>('FIREBASE_WEB_API_KEY');
-
-    if (!apiKey) {
-      throw new BadRequestException({
-        message: 'Firebase API key not configured',
-        errors: [
-          {
-            code: 'MISSING_CONFIG',
-            message: 'FIREBASE_WEB_API_KEY environment variable is required',
-          },
-        ],
-      });
-    }
-
-    // Get tenant to find Firebase tenant ID
-    const tenant = await this.tenantManagementService.findBySlug(tenantSlug);
-    if (!tenant) {
-      throw new NotFoundException({
-        message: 'Tenant not found',
-        errors: [
-          {
-            code: 'TENANT_NOT_FOUND',
-            message: `No tenant found with slug: ${tenantSlug}`,
-          },
-        ],
-      });
-    }
-
-    // Refresh the ID token using Firebase REST API
-    const response = await fetch(
-      `https://securetoken.googleapis.com/v1/token?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const error = (await response.json()) as {
-        error?: { message?: string };
-      };
-      throw new BadRequestException({
-        message: 'Token refresh failed',
-        errors: [
-          {
-            code: 'TOKEN_REFRESH_FAILED',
-            message: error.error?.message || 'Failed to refresh token',
-          },
-        ],
-      });
-    }
-
-    const data = (await response.json()) as {
-      id_token: string;
-      refresh_token: string;
-      expires_in: string;
-      token_type: string;
-      user_id: string;
-      project_id: string;
-    };
-
-    return {
-      id_token: data.id_token,
-      refresh_token: data.refresh_token,
-      expires_in: data.expires_in,
     };
   }
 }

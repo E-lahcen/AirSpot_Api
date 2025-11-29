@@ -17,15 +17,6 @@ export class TenantMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    // Skip tenant check for public template and video files
-    const path = req.path || req.url;
-    if (
-      path.includes('/templates/public/') ||
-      path.includes('/video-download/public/')
-    ) {
-      return next();
-    }
-
     // Extract tenant slug from header
     const slug = req.headers[TENANT_HEADER] as string;
 

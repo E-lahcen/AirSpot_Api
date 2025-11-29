@@ -4,17 +4,10 @@ import { AuthService } from '../services/auth.service';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { ExchangeTokenDto } from '../dto/exchange-token.dto';
-import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { ResponseMessage } from '@app/core/decorators/response-message.decorator';
 import { AuthGuard } from '../guards';
 import { CurrentUser, AuthenticatedUser, Public } from '../decorators';
-import {
-  ApiRegister,
-  ApiLogin,
-  ApiExchangeToken,
-  ApiGetMe,
-  ApiRefreshToken,
-} from '../docs';
+import { ApiRegister, ApiLogin, ApiExchangeToken, ApiGetMe } from '../docs';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -47,14 +40,6 @@ export class AuthController {
       dto.custom_token,
       dto.tenant_slug,
     );
-  }
-
-  @Post('refresh-token')
-  @Public()
-  @ApiRefreshToken()
-  @ResponseMessage({ message: 'Token refreshed successfully' })
-  async refreshToken(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto.refresh_token, dto.tenant_slug);
   }
 
   @Get('me')

@@ -1,62 +1,35 @@
-# flyctl launch added from .gitignore
-# compiled output
-dist
-node_modules
-build
+# Ignore environment files
+.env*
+!.env.example
 
-# Logs
-**/logs
-**/*.log
-**/npm-debug.log*
-**/pnpm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-**/lerna-debug.log*
+# Ignore local development
+docker-compose.local.yml
 
-# OS
-**/.DS_Store
+# Ignore build artifacts
+dist/
+node_modules/
 
-# Tests
-coverage
-.nyc_output
+# Ignore git
+.git/
+.gitignore
 
-# IDEs and editors
-.idea
-**/.project
-**/.classpath
-**/.c9
-**/*.launch
-**/.settings
-**/*.sublime-workspace
+# Ignore documentation (optional - comment out if you want docs in production)
+*.md
+!README.md
 
-# IDE - VSCode
-**/.vscode/*
-!**/.vscode/settings.json
-!**/.vscode/tasks.json
-!**/.vscode/launch.json
-!**/.vscode/extensions.json
+# Ignore test files
+test/
+*.spec.ts
+*.e2e-spec.ts
+jest*.json
 
-# dotenv environment variable files
-**/.env
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
-**/.env.local
-**/.env.migration
+# Ignore CI/CD
+.github/
 
-# temp directory
-**/.temp
-**/.tmp
+# Ignore IDE
+.vscode/
+.idea/
 
-# Runtime data
-**/pids
-**/*.pid
-**/*.seed
-**/*.pid.lock
-
-# Diagnostic reports (https://nodejs.org/api/report.html)
-**/report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-
-# flyctl launch added from .husky/_/.gitignore
-.husky/_/**/*
-fly.toml
+# Ignore logs
+*.log
+npm-debug.log*

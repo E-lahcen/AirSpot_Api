@@ -20,9 +20,7 @@ import { CampaignModule } from './modules/campaign/campaign.module';
 import { CreativeModule } from './modules/creative/creative.module';
 import { AdVariationModule } from './modules/ad-variation/ad-variation.module';
 import { AudienceModule } from './modules/audience/audience.module';
-import { VideoDownloadModule } from './modules/video-download/video-download.module';
-import { TemplateModule } from './modules/template/template.module';
-import { StoryboardModule } from './modules/storyboard/storyboard.module';
+import { UserTenantModule } from './modules/user-tenant/user-tenant.module';
 
 @Module({
   imports: [
@@ -38,9 +36,7 @@ import { StoryboardModule } from './modules/storyboard/storyboard.module';
     CreativeModule,
     AdVariationModule,
     AudienceModule,
-    VideoDownloadModule,
-    TemplateModule,
-    StoryboardModule,
+    UserTenantModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -94,18 +90,6 @@ export class AppModule implements NestModule, OnModuleInit {
       if (results.success.length === 0 && results.failed.length === 0) {
         this.logger.log('✅ No tenant migrations needed');
       }
-
-      // Ensure storyboards table exists for all tenants (safety check)
-      this.logger.log(
-        '🔄 Ensuring storyboards table exists for all tenants...',
-      );
-      try {
-        await this.tenantMigrationService.ensureStoryboardsTableForAllTenants();
-        this.logger.log('✅ Storyboards table check completed');
-      } catch (error) {
-        this.logger.error('❌ Error ensuring storyboards table', error);
-        // Don't throw - allow app to start even if this fails
-      }
     } catch (error) {
       this.logger.error('❌ Error running tenant migrations on startup', error);
       // Don't throw - allow app to start even if migrations fail
@@ -113,26 +97,17 @@ export class AppModule implements NestModule, OnModuleInit {
   }
 
   configure(consumer: MiddlewareConsumer) {
-    // Apply tenant middleware to all routes except health checks, docs, auth registration/login, and public template/video files
+    // Apply tenant middleware to all routes except health checks, docs, and auth registration/login
     consumer
       .apply(TenantMiddleware)
       .exclude(
         { path: '/docs/', method: RequestMethod.ALL },
         { path: '/auth/register', method: RequestMethod.POST, version: '1' },
         { path: '/auth/login', method: RequestMethod.POST, version: '1' },
+        { path: '/user-tenants', method: RequestMethod.GET, version: '1' },
         {
           path: '/auth/exchange-token',
           method: RequestMethod.POST,
-          version: '1',
-        },
-        {
-          path: '/templates/public',
-          method: RequestMethod.ALL,
-          version: '1',
-        },
-        {
-          path: '/video-download/public',
-          method: RequestMethod.ALL,
           version: '1',
         },
       )

@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.local
-    restart: unless-stopped
     env_file:
       - path: .env
     ports:
@@ -28,7 +27,6 @@ services:
 
   postgres:
     image: postgres:17
-    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -40,7 +38,6 @@ services:
 
   redis:
     image: redis:alpine  # Use alpine for smaller size
-    restart: unless-stopped
     volumes:
       - redis_data:/data  # Add this volume for data persistence
     ports:

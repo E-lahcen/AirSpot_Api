@@ -14,18 +14,18 @@ export class AudienceService {
     createAudienceDto: CreateAudienceDto,
     owner_id: string,
     organization_id: string,
-  ): Promise<any> {
-    // The new DTO structure is different from the entity structure
-    // Store the data and return it - you may need to update the entity
-    // or create a new entity to match this structure
-    const { randomUUID } = await import('crypto');
-    return {
+  ): Promise<Audience> {
+    const audienceRepository =
+      await this.tenantConnection.getRepository(Audience);
+
+    const audience = audienceRepository.create({
       ...createAudienceDto,
-      id: createAudienceDto.id || randomUUID(),
-      createdAt: createAudienceDto.createdAt || new Date().toISOString(),
-      owner_id,
       organization_id,
-    };
+      owner_id,
+    });
+
+    const savedAudience = await audienceRepository.save(audience);
+    return savedAudience;
   }
 
   async findAll(filterDto: FilterAudienceDto): Promise<Pagination<Audience>> {

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
@@ -12,13 +12,6 @@ export interface CreateTenantData {
   ownerEmail: string;
   firebaseTenantId: string;
   ownerId?: string;
-  slug?: string;
-  description?: string;
-  logo?: string;
-  region?: string;
-  defaultRole?: string;
-  enforceDomain?: boolean;
-  domain?: string;
 }
 
 @Injectable()
@@ -44,7 +37,7 @@ export class TenantManagementService {
    */
   async createTenant(data: CreateTenantData): Promise<Tenant> {
     // Generate slug from company name (human-readable, URL-friendly)
-    const slug = await this.resolveSlug(data);
+    const slug = await this.generateUniqueSlug(data.companyName);
 
     // Generate schema name (sanitized for PostgreSQL - no hyphens)
     const schemaName = `tenant_${slug.replace(/-/g, '_')}`;
@@ -57,17 +50,6 @@ export class TenantManagementService {
     });
 
     if (existingTenant) {
-      if (data.slug) {
-        throw new ConflictException({
-          message: 'Slug already exists',
-          errors: [
-            {
-              code: 'TENANT_SLUG_EXISTS',
-              message: `Slug ${slug} is already in use`,
-            },
-          ],
-        });
-      }
       this.logger.warn(`Tenant ${slug} already exists`);
       return existingTenant;
     }
@@ -81,13 +63,6 @@ export class TenantManagementService {
       firebase_tenant_id: data.firebaseTenantId,
       owner_id: data.ownerId || null,
       is_active: true,
-      description: data.description || null,
-      logo: data.logo || null,
-      region: data.region || null,
-      default_role: data.defaultRole || null,
-      enforce_domain: data.enforceDomain ?? false,
-      domain:
-        data.enforceDomain && data.domain ? data.domain.toLowerCase() : null,
     });
 
     const savedTenant = await this.tenantRepository.save(tenant);
@@ -241,40 +216,6 @@ export class TenantManagementService {
   private async slugExists(slug: string): Promise<boolean> {
     const tenant = await this.tenantRepository.findOne({ where: { slug } });
     return tenant !== null;
-  }
-
-  private async resolveSlug(data: CreateTenantData): Promise<string> {
-    if (data.slug) {
-      const sanitized = this.generateSlug(data.slug);
-      if (!sanitized) {
-        throw new ConflictException({
-          message: 'Invalid slug',
-          errors: [
-            {
-              code: 'INVALID_SLUG',
-              message:
-                'Provided slug is invalid. Use only letters, numbers, and hyphens.',
-            },
-          ],
-        });
-      }
-
-      if (await this.slugExists(sanitized)) {
-        throw new ConflictException({
-          message: 'Slug already exists',
-          errors: [
-            {
-              code: 'TENANT_SLUG_EXISTS',
-              message: `Slug ${sanitized} is already in use`,
-            },
-          ],
-        });
-      }
-
-      return sanitized;
-    }
-
-    return this.generateUniqueSlug(data.companyName);
   }
 
   /**

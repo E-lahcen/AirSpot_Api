@@ -91,21 +91,6 @@ async function bootstrap() {
     const env =
       app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
-    // Enable CORS for external frontends
-    app.enableCors({
-      origin: true,
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'x-tenant-slug',
-        'Accept',
-        'Origin',
-        'X-Requested-With',
-      ],
-    });
-
     const config = {
       env,
       defaultVersion: '1',

@@ -9,7 +9,7 @@ export class TenantService {
   private firebaseTenantId: string | null = null;
   private tenantId: string | null = null;
 
-   setTenant(tenant: Tenant): void {
+  setTenant(tenant: Tenant): void {
     this.slug = tenant.slug;
     this.firebaseTenantId = tenant.firebase_tenant_id || null;
     this.tenantId = tenant.id || null;

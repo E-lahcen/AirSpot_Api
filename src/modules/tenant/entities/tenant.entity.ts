@@ -36,24 +36,6 @@ export class Tenant {
   @Column({ name: 'members_count', type: 'int', default: 0 })
   members_count: number;
 
-  @Column({ type: 'text', nullable: true })
-  description?: string | null;
-
-  @Column({ type: 'text', nullable: true })
-  logo?: string | null;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  region?: string | null;
-
-  @Column({ name: 'default_role', type: 'varchar', length: 50, nullable: true })
-  default_role?: string | null;
-
-  @Column({ name: 'enforce_domain', type: 'boolean', default: false })
-  enforce_domain: boolean;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  domain?: string | null;
-
   @Column({
     name: 'firebase_tenant_id',
     type: 'varchar',

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TenantConnectionService } from '@app/modules/tenant/services/tenant-connection.service';
 import { Campaign } from '../entities/campaign.entity';
@@ -20,19 +19,12 @@ export class CampaignService {
     const campaignRepository =
       await this.tenantConnection.getRepository(Campaign);
 
-    // Map new DTO structure to entity structure
     const campaign = campaignRepository.create({
-      name: createCampaignDto.name,
-      goal: createCampaignDto.selectedGoal as any, // Map to CampaignGoal enum
-      budget_type: 'LIFETIME' as any, // Default or derive from budgetAmount
-      budget_amount: parseFloat(createCampaignDto.budgetAmount) || 0,
-      start_date: new Date(createCampaignDto.startDate),
-      end_date: new Date(createCampaignDto.endDate),
-      status: createCampaignDto.status as any, // Map to CampaignStatus enum
+      ...createCampaignDto,
       organization_id,
       owner_id,
-      // Store additional data as JSON in a metadata field if needed
-      // For now, we'll map the basic fields
+      start_date: new Date(createCampaignDto.start_date),
+      end_date: new Date(createCampaignDto.end_date),
     });
 
     return await campaignRepository.save(campaign);
@@ -102,21 +94,23 @@ export class CampaignService {
     if (updateCampaignDto.name) {
       updateData.name = updateCampaignDto.name;
     }
-    if (updateCampaignDto.selectedGoal) {
-      updateData.goal = updateCampaignDto.selectedGoal as any;
+    if (updateCampaignDto.goal) {
+      updateData.goal = updateCampaignDto.goal;
+    }
+    if (updateCampaignDto.budget_type) {
+      updateData.budget_type = updateCampaignDto.budget_type;
+    }
+    if (updateCampaignDto.budget_amount) {
+      updateData.budget_amount = updateCampaignDto.budget_amount;
     }
     if (updateCampaignDto.status) {
       updateData.status = updateCampaignDto.status;
     }
-    if (updateCampaignDto.budgetAmount) {
-      updateData.budget_amount =
-        parseFloat(updateCampaignDto.budgetAmount) || 0;
+    if (updateCampaignDto.start_date) {
+      updateData.start_date = new Date(updateCampaignDto.start_date);
     }
-    if (updateCampaignDto.startDate) {
-      updateData.start_date = new Date(updateCampaignDto.startDate);
-    }
-    if (updateCampaignDto.endDate) {
-      updateData.end_date = new Date(updateCampaignDto.endDate);
+    if (updateCampaignDto.end_date) {
+      updateData.end_date = new Date(updateCampaignDto.end_date);
     }
     if (updateCampaignDto.published_at) {
       updateData.published_at = updateCampaignDto.published_at

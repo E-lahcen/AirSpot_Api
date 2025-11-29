@@ -58,7 +58,17 @@ Store ID Token + use for API calls
 ### 2. Login Flow (Existing User)
 
 ```
-User Input (Email + Password + Tenant)
+User enters email
+    ↓
+GET /user-tenants?email=user@example.com
+    ↓
+Backend returns list of tenants for this user
+    ↓
+User selects desired tenant from list
+    ↓
+Frontend displays password field
+    ↓
+User enters password
     ↓
 POST /auth/login
     ↓
@@ -170,7 +180,7 @@ Content-Type: application/json
 {
   "email": string;        // User's email
   "password": string;     // User's password (min 6 chars)
-  "tenant_slug": string;  // Organization identifier
+  "tenant_slug": string;  // Organization identifier (from user-tenants step)
 }
 ```
 
@@ -200,7 +210,61 @@ Content-Type: application/json
 
 ---
 
-### 3. Get Current User Profile
+### 2b. Get User Tenants (for Tenant Selection)
+
+**Endpoint:** `GET /user-tenants?email=<user_email>`
+
+**Description:** Retrieves all tenants associated with a user by their email. Used in the login flow to allow users to select which tenant they want to login to.
+
+**Headers:**
+
+```http
+Content-Type: application/json
+```
+
+**Query Parameters:**
+
+```typescript
+{
+  "email": string;  // User's email address
+}
+```
+
+**Success Response (200):**
+
+```json
+{
+  "statusCode": 200,
+  "message": "User tenants retrieved successfully",
+  "data": [
+    {
+      "id": "987fcdeb-51a2-43f7-8d9c-123456789abc",
+      "slug": "acme-corporation",
+      "company_name": "Acme Corporation",
+      "owner_id": "123e4567-e89b-12d3-a456-426614174000",
+      "is_active": true,
+      "user_role": "owner"
+    },
+    {
+      "id": "abc12345-6789-abcd-ef01-23456789abcd",
+      "slug": "tech-startup",
+      "company_name": "Tech Startup Inc",
+      "owner_id": "987fcdeb-51a2-43f7-8d9c-100000000000",
+      "is_active": true,
+      "user_role": "member"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Email parameter missing or invalid
+- `404 Not Found` - User not found or no tenants associated
+
+---
+
+### 4. Get Current User Profile
 
 **Endpoint:** `GET /auth/me`
 
@@ -327,23 +391,54 @@ async function registerUser(userData) {
 }
 ```
 
-### Example 2: Login Flow
+### Example 2: Login Flow with Tenant Selection
 
 ```javascript
 import { auth, signInWithCustomToken } from './firebase-config';
 
-async function loginUser(credentials) {
+async function loginUser(email, password) {
   try {
-    // Step 1: Login with backend API
+    // Step 1: Get user tenants by email
+    const tenantsResponse = await fetch(
+      `https://api.airspot.com/user-tenants?email=${encodeURIComponent(email)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    const tenantsData = await tenantsResponse.json();
+
+    if (!tenantsResponse.ok) {
+      throw new Error(tenantsData.message || 'Failed to retrieve tenants');
+    }
+
+    const tenants = tenantsData.data;
+
+    if (tenants.length === 0) {
+      throw new Error('No tenants found for this email');
+    }
+
+    // Step 2: Display tenant selection UI to user
+    // In a real app, you'd show a UI component for the user to select from tenants
+    // For this example, we'll use the first tenant
+    const selectedTenant = tenants[0];
+    console.log('Available tenants:', tenants);
+    console.log('Selected tenant:', selectedTenant);
+
+    // Step 3: User enters password and we call login
+    // (In real app, password would come from user input)
     const loginResponse = await fetch('https://api.airspot.com/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: 'john.doe@acme.com',
-        password: 'SecurePass123!',
-        tenant_slug: 'acme-corporation',
+        email: email,
+        password: password,
+        tenant_slug: selectedTenant.slug,
       }),
     });
 
@@ -356,23 +451,152 @@ async function loginUser(credentials) {
     // Response contains: { access_token, user }
     const { access_token, user } = loginData.data;
 
-    // Step 2: Sign in to Firebase with custom token (access_token is the custom token)
+    // Step 4: Sign in to Firebase with custom token (access_token is the custom token)
     const userCredential = await signInWithCustomToken(auth, access_token);
 
-    // Step 3: Get Firebase ID token (this is the token for API calls)
+    // Step 5: Get Firebase ID token (this is the token for API calls)
     const idToken = await userCredential.user.getIdToken();
 
-    // Step 4: Store tokens and tenant context
+    // Step 6: Store tokens and tenant context
     localStorage.setItem('firebaseIdToken', idToken);
-    localStorage.setItem('tenantSlug', 'acme-corporation');
+    localStorage.setItem('tenantSlug', selectedTenant.slug);
     localStorage.setItem('user', JSON.stringify(user));
 
-    return { idToken, user };
+    return { idToken, user, tenant: selectedTenant };
   } catch (error) {
     console.error('Login error:', error);
     throw error;
   }
 }
+```
+
+### Example 2b: Get User Tenants (for UI)
+
+```javascript
+async function getUserTenants(email) {
+  try {
+    const response = await fetch(
+      `https://api.airspot.com/user-tenants?email=${encodeURIComponent(email)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message);
+    }
+
+    return data.data; // Array of tenants
+  } catch (error) {
+    console.error('Get tenants error:', error);
+    throw error;
+  }
+}
+
+// Usage in React component
+import { useState } from 'react';
+
+function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [tenants, setTenants] = useState(null);
+  const [selectedTenant, setSelectedTenant] = useState(null);
+
+  // Step 1: User enters email
+  const handleEmailChange = async (e) => {
+    const userEmail = e.target.value;
+    setEmail(userEmail);
+
+    if (userEmail) {
+      try {
+        // Fetch tenants for this email
+        const userTenants = await getUserTenants(userEmail);
+        setTenants(userTenants);
+      } catch (error) {
+        console.error('Error fetching tenants:', error);
+      }
+    }
+  };
+
+  // Step 2: User selects a tenant
+  const handleTenantSelect = (tenant) => {
+    setSelectedTenant(tenant);
+  };
+
+  // Step 3: User enters password and submits
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!selectedTenant) {
+      alert('Please select a tenant');
+      return;
+    }
+
+    try {
+      await loginUser(email, password);
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="login-form">
+      <form onSubmit={handleSubmit}>
+        {/* Step 1: Email Input */}
+        <input
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={handleEmailChange}
+          required
+        />
+
+        {/* Step 2: Tenant Selection */}
+        {tenants && tenants.length > 0 && (
+          <div className="tenant-selection">
+            <label>Select your organization:</label>
+            <select
+              onChange={(e) =>
+                handleTenantSelect(tenants.find((t) => t.id === e.target.value))
+              }
+            >
+              <option value="">-- Select Organization --</option>
+              {tenants.map((tenant) => (
+                <option key={tenant.id} value={tenant.id}>
+                  {tenant.company_name} ({tenant.user_role})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Step 3: Password Input (shown only after tenant selection) */}
+        {selectedTenant && (
+          <input
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        )}
+
+        <button type="submit" disabled={!selectedTenant}>
+          Login
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default LoginForm;
 ```
 
 ### Example 3: Authenticated API Request
@@ -883,6 +1107,15 @@ interface LoginResponse {
   };
 }
 
+interface UserTenant {
+  id: string;
+  slug: string;
+  company_name: string;
+  owner_id: string;
+  is_active: boolean;
+  user_role: string; // e.g., "owner", "admin", "member"
+}
+
 interface UserProfile {
   id: string;
   email: string;
@@ -923,7 +1156,18 @@ Content-Type: application/json
 # Use: signInWithCustomToken(auth, response.data.access_token)
 ```
 
-### 2. Login
+### 2. Get User Tenants (Step 1 of Login)
+
+```
+GET https://api.airspot.com/user-tenants?email=test@example.com
+Content-Type: application/json
+
+# No body needed
+# Returns array of tenants associated with this email
+# User then selects one tenant from the list
+```
+
+### 3. Login (Step 2 of Login)
 
 ```
 POST https://api.airspot.com/auth/login
@@ -939,7 +1183,7 @@ Content-Type: application/json
 # Use: signInWithCustomToken(auth, response.data.access_token)
 ```
 
-### 3. Get Current User
+### 4. Get Current User
 
 ```
 GET https://api.airspot.com/auth/me

@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -47,9 +48,10 @@ export class TenantMigrationService {
         schema,
       );
 
-      // Filter migrations that need to be applied
+      // Filter migrations that need to be applied (excluding skipped migrations)
       const pendingMigrations = TENANT_MIGRATIONS.filter(
-        (migration) => !appliedVersions.includes(migration.version),
+        (migration) =>
+          !migration.skip && !appliedVersions.includes(migration.version),
       );
 
       if (pendingMigrations.length === 0) {
@@ -71,38 +73,6 @@ export class TenantMigrationService {
         this.logger.log(
           `✓ Applied migration ${migration.version} - ${migration.name}`,
         );
-      }
-
-      // Always run "Ensure" type migrations (idempotent safety checks)
-      // These migrations check if tables exist and create them if missing
-      const ensureMigrations = TENANT_MIGRATIONS.filter((migration) =>
-        migration.name.startsWith('Ensure'),
-      );
-
-      for (const migration of ensureMigrations) {
-        this.logger.log(
-          `Running ensure migration ${migration.version} - ${migration.name} for ${schema}`,
-        );
-        try {
-          await migration.up(queryRunner, schema);
-          // Only record if not already recorded
-          if (!appliedVersions.includes(migration.version)) {
-            await TenantMigrationHelpers.recordMigration(
-              queryRunner,
-              schema,
-              migration,
-            );
-          }
-          this.logger.log(
-            `✓ Ensure migration ${migration.version} - ${migration.name} completed`,
-          );
-        } catch (error) {
-          this.logger.error(
-            `Failed to run ensure migration ${migration.version} - ${migration.name}`,
-            error,
-          );
-          // Don't throw - ensure migrations are safety checks
-        }
       }
 
       this.logger.log(`✓ Migrations completed for schema: ${schema}`);
@@ -181,8 +151,8 @@ export class TenantMigrationService {
       await queryRunner.query(`CREATE SCHEMA "${schema}"`);
       this.logger.log(`✓ Created schema: ${schema}`);
 
-      // Run all migrations to create tables
-      for (const migration of TENANT_MIGRATIONS) {
+      // Run all migrations to create tables (excluding skipped migrations)
+      for (const migration of TENANT_MIGRATIONS.filter((m) => !m.skip)) {
         this.logger.log(
           `Applying migration ${migration.version} - ${migration.name}`,
         );
@@ -314,121 +284,6 @@ export class TenantMigrationService {
       return status;
     } finally {
       await queryRunner.release();
-    }
-  }
-
-  /**
-   * Ensure storyboards table exists for a specific tenant
-   * This is a safety check that runs regardless of migration status
-   */
-  async ensureStoryboardsTable(slug: string): Promise<void> {
-    const schema = `tenant_${slug.replace(/-/g, '_')}`;
-    const queryRunner = this.dataSource.createQueryRunner();
-
-    try {
-      await queryRunner.connect();
-
-      // Check if schema exists
-      const schemaExists = await this.checkSchemaExists(queryRunner, schema);
-      if (!schemaExists) {
-        this.logger.warn(
-          `Schema ${schema} does not exist, skipping storyboards table check`,
-        );
-        return;
-      }
-
-      // Check if storyboards table exists
-      const tableExists = await queryRunner.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = '${schema}'
-          AND table_name = 'storyboards'
-        )
-      `);
-
-      if (!tableExists[0]?.exists) {
-        this.logger.log(`Creating storyboards table for schema: ${schema}`);
-
-        // Create storyboards table
-        await queryRunner.query(`
-          CREATE TABLE "${schema}".storyboards (
-            "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-            "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-            "deleted_at" TIMESTAMP,
-            "organization_id" uuid NOT NULL,
-            "title" character varying(255) NOT NULL,
-            "duration" character varying(50) NOT NULL,
-            "scenes" text NOT NULL,
-            "scenes_data" jsonb NOT NULL DEFAULT '[]',
-            "video_url" character varying(500) NOT NULL,
-            "owner_id" uuid NOT NULL,
-            CONSTRAINT "PK_${schema}_storyboards" PRIMARY KEY ("id")
-          )
-        `);
-
-        // Add foreign key constraint
-        await queryRunner.query(`
-          ALTER TABLE "${schema}".storyboards
-          ADD CONSTRAINT "FK_${schema}_storyboards_owner"
-          FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-          ON DELETE NO ACTION ON UPDATE NO ACTION
-        `);
-
-        this.logger.log(`✓ Storyboards table created for schema: ${schema}`);
-      } else {
-        // Table exists, ensure foreign key constraint exists
-        const fkExists = await queryRunner.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.table_constraints
-            WHERE table_schema = '${schema}'
-            AND table_name = 'storyboards'
-            AND constraint_name = 'FK_${schema}_storyboards_owner'
-          )
-        `);
-
-        if (!fkExists[0]?.exists) {
-          this.logger.log(
-            `Adding foreign key constraint for storyboards table in schema: ${schema}`,
-          );
-          await queryRunner.query(`
-            ALTER TABLE "${schema}".storyboards
-            ADD CONSTRAINT "FK_${schema}_storyboards_owner"
-            FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
-            ON DELETE NO ACTION ON UPDATE NO ACTION
-          `);
-        }
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to ensure storyboards table for ${schema}`,
-        error,
-      );
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
-  }
-
-  /**
-   * Ensure storyboards table exists for all tenants
-   */
-  async ensureStoryboardsTableForAllTenants(): Promise<void> {
-    this.logger.log('Ensuring storyboards table exists for all tenants...');
-
-    const tenants = await this.tenantRepository.find({
-      where: { is_active: true },
-    });
-
-    for (const tenant of tenants) {
-      try {
-        await this.ensureStoryboardsTable(tenant.slug);
-      } catch (error) {
-        this.logger.error(
-          `Failed to ensure storyboards table for tenant ${tenant.slug}`,
-          (error as Error).message,
-        );
-      }
     }
   }
 }
