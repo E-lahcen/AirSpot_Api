@@ -16,12 +16,8 @@ import { RoleService } from '@app/modules/role/services/role.service';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { EnvironmentVariables } from '@app/core/validators';
-<<<<<<< HEAD
 import { FirebaseService } from '@app/modules/firebase/services/firebase.service';
 import { UserTenantService } from '@app/modules/user-tenant/services/user-tenant.service';
-=======
-import { UserTenantService } from '@app/modules/user-tenant/services/user-tenant.service';
->>>>>>> f6b355ad8d7b9a6c19d73401eb46338c85f9f41f
 
 @Injectable()
 export class AuthService {

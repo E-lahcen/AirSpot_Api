@@ -32,7 +32,7 @@ export class OrganisationService {
             createOrganizationDto.name,
         );
     
-        return this.tenantManagementService.createTenant({
+        const tenant = await this.tenantManagementService.createTenant({
           companyName: createOrganizationDto.name,
           ownerEmail: user.email,
           firebaseTenantId: firebaseTenant.tenantId,
@@ -45,5 +45,9 @@ export class OrganisationService {
           enforceDomain: createOrganizationDto.enforceDomain ?? false,
           domain: createOrganizationDto.enforceDomain ? createOrganizationDto.domain : undefined,
         });
+
+        await this.tenantManagementService.setTenantOwner(tenant.id, user.id);
+
+        return tenant;
     }
 }
