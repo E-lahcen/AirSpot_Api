@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TenantConnectionService } from '@app/modules/tenant/services/tenant-connection.service';
-import { Audience } from '../entities/audience.entity';
+import { Audience, TargetType } from '../entities/audience.entity';
 import { CreateAudienceDto, UpdateAudienceDto } from '../dto';
 import { FilterAudienceDto } from '../dto/filter-audience.dto';
 import { paginate, Pagination } from 'nestjs-typeorm-paginate';
@@ -15,17 +15,25 @@ export class AudienceService {
     owner_id: string,
     organization_id: string,
   ): Promise<any> {
-    // The new DTO structure is different from the entity structure
-    // Store the data and return it - you may need to update the entity
-    // or create a new entity to match this structure
-    const { randomUUID } = await import('crypto');
-    return {
-      ...createAudienceDto,
-      id: createAudienceDto.id || randomUUID(),
-      createdAt: createAudienceDto.createdAt || new Date().toISOString(),
+    const audienceRepository =
+      await this.tenantConnection.getRepository(Audience);
+
+    const audience = audienceRepository.create({
+      type: createAudienceDto.category as TargetType,
+      name: createAudienceDto.name,
+      size: createAudienceDto.size,
+      reached: createAudienceDto.reached,
+      platforms: createAudienceDto.platforms,
+      campaigns: createAudienceDto.campaigns,
+      selected_locations: createAudienceDto.selected_locations,
+      selected_interests: createAudienceDto.selected_interests,
+      age_range: createAudienceDto.age_range,
+      selected_genders: createAudienceDto.selected_genders,
       owner_id,
       organization_id,
-    };
+    });
+    console.log('audience', audience);
+    return await audienceRepository.save(audience);
   }
 
   async findAll(filterDto: FilterAudienceDto): Promise<Pagination<Audience>> {

@@ -35,8 +35,8 @@ export class CreateAudienceDto {
   platforms: string[];
 
   @ApiProperty({ description: 'Campaigns' })
-  @IsString()
-  campaigns: string;
+  @IsNumber()
+  campaigns: number;
 
   @ApiProperty({ description: 'Selected locations', type: [String] })
   @IsArray()

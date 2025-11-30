@@ -18,13 +18,4 @@ export class LoginDto {
   @IsString()
   @MinLength(6)
   password: string;
-
-  @ApiProperty({
-    description: 'Tenant slug to authenticate against',
-    example: 'acme-corporation',
-    name: 'tenant_slug',
-  })
-  @IsString()
-  @IsNotEmpty()
-  tenant_slug: string;
 }

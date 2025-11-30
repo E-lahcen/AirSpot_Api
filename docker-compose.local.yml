@@ -25,6 +25,8 @@ services:
     depends_on:
       - postgres
       - redis  # Add this dependency
+    volumes:
+      - downloads:/data:rw
 
   postgres:
     image: postgres:17
@@ -59,4 +61,5 @@ services:
 
 volumes:
   postgres_data:
+  downloads:
   redis_data:  # Add this volume definition
