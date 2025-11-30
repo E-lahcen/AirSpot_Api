@@ -51,25 +51,25 @@ export class TenantSetupService implements OnModuleInit {
     try {
       await queryRunner.connect();
 
-      // Create main tenants table in public schema
-      await queryRunner.query(`
-        CREATE TABLE IF NOT EXISTS public.tenants (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          tenant_id VARCHAR(100) UNIQUE NOT NULL,
-          slug VARCHAR(100) UNIQUE NOT NULL,
-          company_name VARCHAR(255) NOT NULL,
-          schema_name VARCHAR(100) UNIQUE NOT NULL,
-          is_active BOOLEAN DEFAULT TRUE,
-          owner_email VARCHAR(255) NOT NULL,
-          firebase_tenant_id VARCHAR(128) UNIQUE,
-          created_at TIMESTAMP DEFAULT NOW(),
-          updated_at TIMESTAMP DEFAULT NOW()
-        );
-      `);
+      // // Create main tenants table in public schema
+      // await queryRunner.query(`
+      //   CREATE TABLE IF NOT EXISTS public.tenants (
+      //     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      //     tenant_id VARCHAR(100) UNIQUE NOT NULL,
+      //     slug VARCHAR(100) UNIQUE NOT NULL,
+      //     company_name VARCHAR(255) NOT NULL,
+      //     schema_name VARCHAR(100) UNIQUE NOT NULL,
+      //     is_active BOOLEAN DEFAULT TRUE,
+      //     owner_email VARCHAR(255) NOT NULL,
+      //     firebase_tenant_id VARCHAR(128) UNIQUE,
+      //     created_at TIMESTAMP DEFAULT NOW(),
+      //     updated_at TIMESTAMP DEFAULT NOW()
+      //   );
+      // `);
 
-      this.logger.log('✓ Main tenants table created/verified');
+      // this.logger.log('✓ Main tenants table created/verified');
 
-      // Drop old functions if they exist (to allow parameter name changes)
+      // // Drop old functions if they exist (to allow parameter name changes)
       await queryRunner.query(`
         DROP FUNCTION IF EXISTS create_tenant_schema(character varying);
         DROP FUNCTION IF EXISTS setup_tenant_tables(character varying);
@@ -77,7 +77,7 @@ export class TenantSetupService implements OnModuleInit {
         DROP FUNCTION IF EXISTS delete_tenant_schema(character varying);
       `);
 
-      // Create tenant schema function
+      // // Create tenant schema function
       await queryRunner.query(`
         CREATE OR REPLACE FUNCTION create_tenant_schema(tenant_slug VARCHAR)
         RETURNS VOID AS $$
@@ -93,7 +93,7 @@ export class TenantSetupService implements OnModuleInit {
         $$ LANGUAGE plpgsql;
       `);
 
-      // Create setup tables function
+      // // Create setup tables function
       await queryRunner.query(`
         CREATE OR REPLACE FUNCTION setup_tenant_tables(tenant_slug VARCHAR)
         RETURNS VOID AS $$
@@ -106,7 +106,7 @@ export class TenantSetupService implements OnModuleInit {
         $$ LANGUAGE plpgsql;
       `);
 
-      // Create onboard function
+      // // Create onboard function
       await queryRunner.query(`
         CREATE OR REPLACE FUNCTION onboard_tenant(tenant_slug VARCHAR)
         RETURNS VOID AS $$
@@ -118,10 +118,10 @@ export class TenantSetupService implements OnModuleInit {
         $$ LANGUAGE plpgsql;
       `);
 
-      // Create tenant schemas view
+      // // Create tenant schemas view
       await queryRunner.query(`
         CREATE OR REPLACE VIEW tenant_schemas AS
-        SELECT 
+        SELECT
           schema_name,
           substring(schema_name from 8) as tenant_id,
           pg_size_pretty(
@@ -138,7 +138,7 @@ export class TenantSetupService implements OnModuleInit {
         ORDER BY schema_name;
       `);
 
-      // Create delete function
+      // // Create delete function
       await queryRunner.query(`
         CREATE OR REPLACE FUNCTION delete_tenant_schema(tenant_slug VARCHAR)
         RETURNS VOID AS $$
