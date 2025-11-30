@@ -840,4 +840,206 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".templates`);
     },
   },
+  {
+    version: 1764451387072,
+    name: 'CreativeEntityUpdate',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_name"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_key"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_bucket"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_size"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "mime_type"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "duration"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "thumbnail_s3_key"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "end_duration"`);
+
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "orientation" character varying(50)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "theme" character varying(50)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "video_position" character varying(50)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "brand_name" character varying(255)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "price" character varying(50)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "product_name" character varying(255)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "features" text array`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "show_qr_code" boolean NOT NULL DEFAULT false`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "qr_code_text" character varying(500)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "logo_path" character varying(500)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "product_image_path" character varying(500)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "video_path" character varying(500)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "template_image_path" character varying(500)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "filename" character varying(500)`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives ADD "campaign_count" integer NOT NULL DEFAULT '0'`);
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "thumbnail_s3_key"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "end_duration"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "duration"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "mime_type"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_size"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_bucket"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_key"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_name"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "campaign_count"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "filename"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "template_image_path"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_path"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_image_path"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "logo_path"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "qr_code_text"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "show_qr_code"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "features"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_name"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "price"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "brand_name"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_position"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "theme"`);
+      await queryRunner.query(`ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "orientation"`);
+    },
+  },
+  {
+    version: 1764457409357,
+    name: 'CreativeEntityUpdate',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Remove old storage columns, keep file_name
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_key"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_bucket"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_size"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "mime_type"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "duration"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "thumbnail_s3_key"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "end_duration"`,
+      );
+
+      // Add new creative fields (if they don't exist yet)
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "orientation" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "theme" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "video_position" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "brand_name" character varying(255)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "price" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "product_name" character varying(255)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "features" text[]`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "show_qr_code" boolean NOT NULL DEFAULT false`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "qr_code_text" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "logo_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "product_image_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "video_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "template_image_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "campaign_count" integer NOT NULL DEFAULT 0`,
+      );
+
+      // NOTE: file_name already exists, and we keep it.
+      // NOTE: owner_id was added in the AddOwnerIdToEntities migration.
+    },
+
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop new fields
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "campaign_count"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "template_image_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_image_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "logo_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "qr_code_text"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "show_qr_code"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "features"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_name"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "price"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "brand_name"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_position"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "theme"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "orientation"`,
+      );
+
+      // Recreate old storage columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "end_duration" integer`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "thumbnail_s3_key" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "duration" integer`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "mime_type" character varying(100) NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "file_size" bigint NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "s3_bucket" character varying(255) NOT NULL DEFAULT 'airspot-ctv-assets'`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "s3_key" character varying(500) NOT NULL`,
+      );
+
+      // file_name stays; we don't touch it
+    },
+  }
+
 ];

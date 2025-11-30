@@ -14,26 +14,51 @@ export class Creative extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ type: 'varchar', length: 500 })
-  file_name: string;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  orientation: string | null;
 
-  @Column({ type: 'varchar', length: 500 })
-  s3_key: string;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  theme: string | null;
 
-  @Column({ type: 'varchar', length: 255, default: 'airspot-ctv-assets' })
-  s3_bucket: string;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  video_position: string | null;
 
-  @Column({ type: 'bigint' })
-  file_size: number;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  brand_name: string | null;
 
-  @Column({ type: 'varchar', length: 100 })
-  mime_type: string;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  price: string | null;
 
-  @Column({ type: 'int', nullable: true })
-  duration: number | null;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  product_name: string | null;
+
+  // store features as text array (Postgres). If using other DBs, adjust accordingly.
+  @Column('text', { array: true, nullable: true })
+  features: string[] | null;
+
+  @Column({ type: 'boolean', default: false })
+  show_qr_code: boolean;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  thumbnail_s3_key: string | null;
+  qr_code_text: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  logo_path: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  product_image_path: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  video_path: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  template_image_path: string | null;
+
+  @Column({ name: 'file_name', type: 'varchar', length: 500 })
+  file_name: string;
+
+  @Column({ type: 'int', default: 0 })
+  campaign_count: number;
 
   @Column({ type: 'uuid' })
   owner_id: string;

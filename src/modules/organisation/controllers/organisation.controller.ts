@@ -1,11 +1,13 @@
 import { Roles } from '@app/modules/auth/decorators/roles.decorator';
-import { Body, ConflictException, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { AuthenticatedUser, CurrentUser } from '@app/modules/auth/decorators';
 import { OrganisationService } from '../services/organisation.service';
+import { AuthGuard } from '@app/modules/auth/guards';
 
-@Controller('organisation')
+@Controller('organisations')
+@UseGuards(AuthGuard)
 export class OrganisationController {
     constructor(private readonly organisationService: OrganisationService) {}
 
