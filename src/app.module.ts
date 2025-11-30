@@ -63,7 +63,7 @@ import { InvitationModule } from './modules/invitation/invitation.module';
         autoLoadEntities: true,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/[0-9]*-*.{ts,js}'],
-        // migrationsRun: true,
+        migrationsRun: true,
         // Connection pool configuration to prevent connection exhaustion
         // Query timeout to prevent long-running queries from holding connections
         maxQueryExecutionTime: 10000, // Log queries that take longer than 10 seconds
