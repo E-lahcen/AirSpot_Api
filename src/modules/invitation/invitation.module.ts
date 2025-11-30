@@ -1,14 +1,14 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { InvitationService } from './services/invitation.service';
-import { EmailService } from './services/email.service';
-import { InvitationController } from './controllers';
-import { RoleModule } from '../role/role.module';
-import { TenantModule } from '../tenant/tenant.module';
+import { Module } from "@nestjs/common";
+import { InvitationService } from "./services/invitation.service";
+import { InvitationController } from "./controllers/invitation.controller";
+import { NotificationModule } from "../notification/notification.module";
+import { InvitationTemplateService } from "./services/invitation-template.service";
+import { AuthModule } from "../auth/auth.module";
 
 @Module({
-  imports: [RoleModule, forwardRef(() => TenantModule)],
+  imports: [AuthModule, NotificationModule],
   controllers: [InvitationController],
-  providers: [InvitationService, EmailService],
-  exports: [InvitationService, EmailService],
+  providers: [InvitationService, InvitationTemplateService],
+  exports: [InvitationService],
 })
 export class InvitationModule {}

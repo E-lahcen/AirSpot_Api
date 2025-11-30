@@ -1,4 +1,4 @@
-import { Inject, Injectable, Provider } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { FIREBASE_AUTH } from "../firebase.constants";
 import { Auth } from "firebase-admin/auth";
 
@@ -6,7 +6,7 @@ import { Auth } from "firebase-admin/auth";
 export class FirebaseService {
   constructor(
     @Inject(FIREBASE_AUTH)
-    private readonly auth: Auth
+    private readonly auth: Auth,
   ) {}
 
   /**
@@ -62,5 +62,59 @@ export class FirebaseService {
         state: "DISABLED",
       },
     });
+  }
+
+  /**
+   * Create a Firebase user within a specific tenant
+   */
+  async createTenantUser(
+    firebaseTenantId: string,
+    email: string,
+    password: string,
+    displayName: string,
+  ) {
+    return this.auth
+      .tenantManager()
+      .authForTenant(firebaseTenantId)
+      .createUser({
+        email,
+        password,
+        displayName,
+      });
+  }
+
+  /**
+   * Set custom claims for a Firebase user within a specific tenant
+   */
+  async setTenantUserClaims(
+    firebaseTenantId: string,
+    firebaseUid: string,
+    customClaims: Record<string, any>,
+  ) {
+    return this.auth
+      .tenantManager()
+      .authForTenant(firebaseTenantId)
+      .setCustomUserClaims(firebaseUid, customClaims);
+  }
+
+  /**
+   * Create a custom token for a Firebase user within a specific tenant
+   */
+  async createTenantCustomToken(
+    firebaseTenantId: string,
+    firebaseUid: string,
+    additionalClaims?: Record<string, any>,
+  ) {
+    return this.auth
+      .tenantManager()
+      .authForTenant(firebaseTenantId)
+      .createCustomToken(firebaseUid, additionalClaims);
+  }
+
+  /**
+   * Get the tenant-specific auth instance
+   */
+  getTenantAuth(firebaseTenantId: string) {
+    return this.auth.tenantManager().authForTenant(firebaseTenantId);
   }
 }

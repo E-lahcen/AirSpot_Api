@@ -1,4 +1,4 @@
-import { Role } from '@app/modules/role/entities/role.entity';
+import { Role } from "@app/modules/role/entities/role.entity";
 import {
   Entity,
   Column,
@@ -7,41 +7,41 @@ import {
   UpdateDateColumn,
   ManyToMany,
   JoinTable,
-} from 'typeorm';
+} from "typeorm";
 
-@Entity('users')
+@Entity("users")
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ name: 'first_name', type: 'varchar', length: 255, nullable: true })
+  @Column({ name: "first_name", type: "varchar", length: 255, nullable: true })
   first_name?: string;
 
-  @Column({ name: 'last_name', type: 'varchar', length: 255, nullable: true })
+  @Column({ name: "last_name", type: "varchar", length: 255, nullable: true })
   last_name?: string;
 
-  @Column({ name: 'full_name', type: 'varchar', length: 255, nullable: true })
+  @Column({ name: "full_name", type: "varchar", length: 255, nullable: true })
   full_name?: string;
 
-  @Column({ name: 'company_name', type: 'varchar', length: 255 })
+  @Column({ name: "company_name", type: "varchar", length: 255 })
   company_name: string;
 
-  @Column({ name: 'email', type: 'varchar', length: 255, unique: true })
+  @Column({ name: "email", type: "varchar", length: 255, unique: true })
   email: string;
 
-  @Column({ name: 'firebase_uid', type: 'varchar', length: 128, unique: true })
+  @Column({ name: "firebase_uid", type: "varchar", length: 128, unique: true })
   firebase_uid: string;
 
   @ManyToMany(() => Role, { eager: true })
   @JoinTable({
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
+    joinColumn: { name: "user_id", referencedColumnName: "id" },
+    inverseJoinColumn: { name: "role_id", referencedColumnName: "id" },
   })
   roles: Role[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   created_at: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updated_at: Date;
 }

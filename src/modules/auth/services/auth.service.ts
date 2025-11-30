@@ -1,4 +1,4 @@
-import { FIREBASE_AUTH } from '@app/modules/firebase/firebase.constants';
+import { FIREBASE_AUTH } from "@app/modules/firebase/firebase.constants";
 import {
   Inject,
   Injectable,
@@ -6,18 +6,37 @@ import {
   BadRequestException,
   UnauthorizedException,
   NotFoundException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Auth } from 'firebase-admin/auth';
-import { UserService } from '@app/modules/user/services/user.service';
-import { TenantManagementService } from '@app/modules/tenant/services/tenant-management.service';
-import { TenantService } from '@app/modules/tenant/services/tenant.service';
-import { RoleService } from '@app/modules/role/services/role.service';
-import { LoginDto } from '../dto/login.dto';
-import { RegisterDto } from '../dto/register.dto';
-import { EnvironmentVariables } from '@app/core/validators';
-import { FirebaseService } from '@app/modules/firebase/services/firebase.service';
-import { UserTenantService } from '@app/modules/user-tenant/services/user-tenant.service';
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Auth } from "firebase-admin/auth";
+import { UserService } from "@app/modules/user/services/user.service";
+import { TenantManagementService } from "@app/modules/tenant/services/tenant-management.service";
+import { TenantService } from "@app/modules/tenant/services/tenant.service";
+import { RoleService } from "@app/modules/role/services/role.service";
+import { LoginDto } from "../dto/login.dto";
+import { RegisterDto } from "../dto/register.dto";
+import { EnvironmentVariables } from "@app/core/validators";
+import { FirebaseService } from "@app/modules/firebase/services/firebase.service";
+import { UserTenantService } from "@app/modules/user-tenant/services/user-tenant.service";
+import { Role } from "@app/modules/role/entities/role.entity";
+import { User } from "@app/modules/user/entities/user.entity";
+import { Tenant } from "@app/modules/tenant/entities/tenant.entity";
+
+export interface CreateTenantUserParams {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  fullName?: string;
+  tenant: Tenant;
+  role: Role;
+}
+
+export interface CreateTenantUserResult {
+  user: User;
+  accessToken: string;
+  firebaseUid: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -30,8 +49,134 @@ export class AuthService {
     private readonly roleService: RoleService,
     private readonly configService: ConfigService<EnvironmentVariables, true>,
     private readonly firebaseService: FirebaseService,
-    private readonly userTenantService: UserTenantService
+    private readonly userTenantService: UserTenantService,
   ) {}
+
+  /**
+   * Shared method to create a user within an existing tenant
+   * Used by both registration and invitation acceptance flows
+   */
+  async createTenantUser(
+    params: CreateTenantUserParams,
+  ): Promise<CreateTenantUserResult> {
+    const { email, password, firstName, lastName, fullName, tenant, role } =
+      params;
+
+    try {
+      // Step 1: Set tenant context for this operation
+      this.tenantService.setTenant(tenant);
+
+      // Step 7: Ensure default roles exist
+      await this.roleService.ensureDefaultRoles();
+
+      // Step 2: Check if user already exists in tenant
+      const existingUser = await this.userService.findByEmail(email);
+
+      if (existingUser) {
+        throw new ConflictException({
+          message: "User already exists",
+          errors: [
+            {
+              code: "USER_EXISTS",
+              message: "A user with this email already exists in this tenant",
+            },
+          ],
+        });
+      }
+
+      // Step 3: Create Firebase user within the tenant
+      const firebaseUser = await this.firebaseService.createTenantUser(
+        tenant.firebase_tenant_id,
+        email,
+        password,
+        fullName || `${firstName} ${lastName}`,
+      );
+
+      // Step 4: Create user in tenant schema
+      const user = await this.userService.createUser({
+        first_name: firstName,
+        last_name: lastName,
+        full_name: fullName || `${firstName} ${lastName}`,
+        company_name: tenant.company_name,
+        email: email,
+        firebase_uid: firebaseUser.uid,
+        roles: [role],
+      });
+
+      // Step 5: Create user-tenant mapping in public schema
+      await this.userTenantService.create({
+        user_id: user.id,
+        tenant_id: tenant.id,
+        email: email,
+      });
+
+      // Step 6: Set custom claims for Firebase user
+      await this.firebaseService.setTenantUserClaims(
+        tenant.firebase_tenant_id,
+        firebaseUser.uid,
+        {
+          firebaseTenantId: tenant.firebase_tenant_id,
+          tenantId: tenant.id,
+          slug: tenant.slug,
+          roles: [role],
+        },
+      );
+
+      // Step 7: Create custom token for the user to sign in
+      const accessToken = await this.firebaseService.createTenantCustomToken(
+        tenant.firebase_tenant_id,
+        firebaseUser.uid,
+        {
+          slug: tenant.slug,
+          tenantId: tenant.id,
+          roles: [role],
+          firebaseTenantId: tenant.firebase_tenant_id,
+        },
+      );
+
+      return {
+        user,
+        accessToken,
+        firebaseUid: firebaseUser.uid,
+      };
+    } catch (error) {
+      // Handle Firebase errors
+      if (error instanceof Error) {
+        if (error.message.includes("auth/email-already-exists")) {
+          throw new ConflictException({
+            message: "Email already exists in Firebase",
+            errors: [
+              {
+                code: "FIREBASE_EMAIL_EXISTS",
+                message: "This email is already registered in Firebase",
+              },
+            ],
+          });
+        }
+      }
+
+      // Re-throw known errors
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      // Handle unknown errors
+      throw new BadRequestException({
+        message: "Failed to create tenant user",
+        errors: [
+          {
+            code: "USER_CREATION_FAILED",
+            message:
+              error instanceof Error ? error.message : "Unknown error occurred",
+          },
+        ],
+      });
+    }
+  }
 
   async register(dto: RegisterDto) {
     try {
@@ -40,11 +185,11 @@ export class AuthService {
         await this.tenantManagementService.findByCompanyName(dto.company_name);
       if (existingTenant) {
         throw new ConflictException({
-          message: 'Company already exists',
+          message: "Company already exists",
           errors: [
             {
-              code: 'COMPANY_EXISTS',
-              message: 'A tenant for this company already exists',
+              code: "COMPANY_EXISTS",
+              message: "A tenant for this company already exists",
             },
           ],
         });
@@ -61,73 +206,37 @@ export class AuthService {
         firebaseTenantId: firebaseTenant.tenantId,
       });
 
-      // Step 4: Create Firebase user within the tenant
-      const firebaseUser = await this.auth
-        .tenantManager()
-        .authForTenant(firebaseTenant.tenantId)
-        .createUser({
-          email: dto.email,
-          password: dto.password,
-          displayName: dto.name,
-        });
-
-      // Step 5: Set tenant context for this request
+      // Step 4: Set tenant context and ensure default roles exist
       this.tenantService.setTenant(tenant);
+      await this.roleService.ensureDefaultRoles();
 
-      const owner = await this.roleService.findByName('owner');
+      // Step 5: Get owner role
+      const owner = await this.roleService.findByName("owner");
       if (!owner) {
         throw new NotFoundException({
-          message: 'Owner role not found',
+          message: "Owner role not found",
           errors: [
             {
-              code: 'ROLE_NOT_FOUND',
-              message: 'Default owner role does not exist',
+              code: "ROLE_NOT_FOUND",
+              message: "Default owner role does not exist",
             },
           ],
         });
       }
 
-      // Step 6: Create user in tenant schema
-      const user = await this.userService.createUser({
-        first_name: dto.first_name,
-        last_name: dto.last_name,
-        company_name: dto.company_name,
+      // Step 6: Create user using shared method
+      const { user, accessToken } = await this.createTenantUser({
         email: dto.email,
-        firebase_uid: firebaseUser.uid,
-        full_name: dto.name,
-        roles: [owner],
+        password: dto.password,
+        firstName: dto.first_name,
+        lastName: dto.last_name,
+        fullName: dto.name,
+        tenant,
+        role: owner,
       });
 
+      // Step 7: Set tenant owner
       await this.tenantManagementService.setTenantOwner(tenant.id, user.id);
-
-      await this.userTenantService.create({
-        user_id: user.id,
-        tenant_id: tenant.id,
-        email: dto.email,
-      });
-
-      await this.roleService.ensureDefaultRoles();
-
-      await this.auth
-        .tenantManager()
-        .authForTenant(firebaseTenant.tenantId)
-        .setCustomUserClaims(firebaseUser.uid, {
-          firebaseTenantId: firebaseTenant.tenantId,
-          tenantId: tenant.id,
-          slug: tenant.slug,
-          roles: [owner], // First user is the owner
-        });
-
-      const tenantAuth = this.auth
-        .tenantManager()
-        .authForTenant(tenant.firebase_tenant_id);
-
-      const accessToken = await tenantAuth.createCustomToken(firebaseUser.uid, {
-        slug: tenant.slug,
-        tenantId: tenant.id,
-        roles: [owner],
-        firebaseTenantId: tenant.firebase_tenant_id,
-      });
 
       return {
         access_token: accessToken,
@@ -138,13 +247,22 @@ export class AuthService {
         },
       };
     } catch (error) {
+      // Re-throw known errors
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
       throw new BadRequestException({
-        message: 'Registration failed',
+        message: "Registration failed",
         errors: [
           {
-            code: 'REGISTRATION_FAILED',
+            code: "REGISTRATION_FAILED",
             message:
-              error instanceof Error ? error.message : 'Unknown error occurred',
+              error instanceof Error ? error.message : "Unknown error occurred",
           },
         ],
       });
@@ -159,10 +277,10 @@ export class AuthService {
       );
       if (!tenant) {
         throw new NotFoundException({
-          message: 'Tenant not found',
+          message: "Tenant not found",
           errors: [
             {
-              code: 'TENANT_NOT_FOUND',
+              code: "TENANT_NOT_FOUND",
               message: `No tenant found with slug: ${dto.tenant_slug}`,
             },
           ],
@@ -171,11 +289,11 @@ export class AuthService {
 
       if (!tenant.is_active) {
         throw new UnauthorizedException({
-          message: 'Tenant is inactive',
+          message: "Tenant is inactive",
           errors: [
             {
-              code: 'TENANT_INACTIVE',
-              message: 'This tenant account has been deactivated',
+              code: "TENANT_INACTIVE",
+              message: "This tenant account has been deactivated",
             },
           ],
         });
@@ -192,11 +310,11 @@ export class AuthService {
 
       if (!firebaseUser) {
         throw new UnauthorizedException({
-          message: 'Invalid credentials',
+          message: "Invalid credentials",
           errors: [
             {
-              code: 'INVALID_CREDENTIALS',
-              message: 'Email or password is incorrect',
+              code: "INVALID_CREDENTIALS",
+              message: "Email or password is incorrect",
             },
           ],
         });
@@ -216,11 +334,11 @@ export class AuthService {
 
       if (!user) {
         throw new UnauthorizedException({
-          message: 'User not found in tenant database',
+          message: "User not found in tenant database",
           errors: [
             {
-              code: 'USER_NOT_FOUND',
-              message: 'User record not found',
+              code: "USER_NOT_FOUND",
+              message: "User record not found",
             },
           ],
         });
@@ -242,26 +360,26 @@ export class AuthService {
       // Handle Firebase auth errors
       if (
         error instanceof Error &&
-        error.message.includes('auth/user-not-found')
+        error.message.includes("auth/user-not-found")
       ) {
         throw new UnauthorizedException({
-          message: 'Invalid credentials',
+          message: "Invalid credentials",
           errors: [
             {
-              code: 'INVALID_CREDENTIALS',
-              message: 'Email or password is incorrect',
+              code: "INVALID_CREDENTIALS",
+              message: "Email or password is incorrect",
             },
           ],
         });
       }
 
       throw new BadRequestException({
-        message: 'Login failed',
+        message: "Login failed",
         errors: [
           {
-            code: 'LOGIN_FAILED',
+            code: "LOGIN_FAILED",
             message:
-              error instanceof Error ? error.message : 'Unknown error occurred',
+              error instanceof Error ? error.message : "Unknown error occurred",
           },
         ],
       });
@@ -273,11 +391,11 @@ export class AuthService {
 
     if (!user) {
       throw new NotFoundException({
-        message: 'User not found',
+        message: "User not found",
         errors: [
           {
-            code: 'USER_NOT_FOUND',
-            message: 'User record not found',
+            code: "USER_NOT_FOUND",
+            message: "User record not found",
           },
         ],
       });
@@ -287,15 +405,15 @@ export class AuthService {
   }
 
   async exchangeCustomToken(customToken: string, tenantSlug: string) {
-    const apiKey = this.configService.get<string>('FIREBASE_WEB_API_KEY');
+    const apiKey = this.configService.get<string>("FIREBASE_WEB_API_KEY");
 
     if (!apiKey) {
       throw new BadRequestException({
-        message: 'Firebase API key not configured',
+        message: "Firebase API key not configured",
         errors: [
           {
-            code: 'MISSING_CONFIG',
-            message: 'FIREBASE_WEB_API_KEY environment variable is required',
+            code: "MISSING_CONFIG",
+            message: "FIREBASE_WEB_API_KEY environment variable is required",
           },
         ],
       });
@@ -305,10 +423,10 @@ export class AuthService {
     const tenant = await this.tenantManagementService.findBySlug(tenantSlug);
     if (!tenant) {
       throw new NotFoundException({
-        message: 'Tenant not found',
+        message: "Tenant not found",
         errors: [
           {
-            code: 'TENANT_NOT_FOUND',
+            code: "TENANT_NOT_FOUND",
             message: `No tenant found with slug: ${tenantSlug}`,
           },
         ],
@@ -319,9 +437,9 @@ export class AuthService {
     const response = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${apiKey}`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           token: customToken,
@@ -336,11 +454,11 @@ export class AuthService {
         error?: { message?: string };
       };
       throw new BadRequestException({
-        message: 'Token exchange failed',
+        message: "Token exchange failed",
         errors: [
           {
-            code: 'TOKEN_EXCHANGE_FAILED',
-            message: error.error?.message || 'Failed to exchange custom token',
+            code: "TOKEN_EXCHANGE_FAILED",
+            message: error.error?.message || "Failed to exchange custom token",
           },
         ],
       });
@@ -360,15 +478,15 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string, tenantSlug: string) {
-    const apiKey = this.configService.get<string>('FIREBASE_WEB_API_KEY');
+    const apiKey = this.configService.get<string>("FIREBASE_WEB_API_KEY");
 
     if (!apiKey) {
       throw new BadRequestException({
-        message: 'Firebase API key not configured',
+        message: "Firebase API key not configured",
         errors: [
           {
-            code: 'MISSING_CONFIG',
-            message: 'FIREBASE_WEB_API_KEY environment variable is required',
+            code: "MISSING_CONFIG",
+            message: "FIREBASE_WEB_API_KEY environment variable is required",
           },
         ],
       });
@@ -378,10 +496,10 @@ export class AuthService {
     const tenant = await this.tenantManagementService.findBySlug(tenantSlug);
     if (!tenant) {
       throw new NotFoundException({
-        message: 'Tenant not found',
+        message: "Tenant not found",
         errors: [
           {
-            code: 'TENANT_NOT_FOUND',
+            code: "TENANT_NOT_FOUND",
             message: `No tenant found with slug: ${tenantSlug}`,
           },
         ],
@@ -392,12 +510,12 @@ export class AuthService {
     const response = await fetch(
       `https://securetoken.googleapis.com/v1/token?key=${apiKey}`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          grant_type: 'refresh_token',
+          grant_type: "refresh_token",
           refresh_token: refreshToken,
         }),
       },
@@ -408,11 +526,11 @@ export class AuthService {
         error?: { message?: string };
       };
       throw new BadRequestException({
-        message: 'Token refresh failed',
+        message: "Token refresh failed",
         errors: [
           {
-            code: 'TOKEN_REFRESH_FAILED',
-            message: error.error?.message || 'Failed to refresh token',
+            code: "TOKEN_REFRESH_FAILED",
+            message: error.error?.message || "Failed to refresh token",
           },
         ],
       });
