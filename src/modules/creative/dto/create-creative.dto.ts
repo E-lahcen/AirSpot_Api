@@ -1,8 +1,19 @@
-import { IsString, IsOptional, IsNumber, Min, IsUUID, IsInt, IsArray, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  Min,
+  IsUUID,
+  IsInt,
+  IsArray,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCreativeDto {
-  @ApiProperty({ description: 'Organization id (UUID)' , example: '3ab4c861-b76f-46a7-aa37-b2b928b3274e'})
+  @ApiProperty({
+    description: 'Organization id (UUID)',
+    example: '3ab4c861-b76f-46a7-aa37-b2b928b3274e',
+  })
   @IsUUID()
   organization_id: string;
 
@@ -51,7 +62,10 @@ export class CreateCreativeDto {
   @IsString({ each: true })
   features?: string[];
 
-  @ApiPropertyOptional({ description: 'Whether to show QR code', example: false })
+  @ApiPropertyOptional({
+    description: 'Whether to show QR code',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   show_qr_code?: boolean;
@@ -61,32 +75,50 @@ export class CreateCreativeDto {
   @IsString()
   qr_code_text?: string;
 
-  @ApiPropertyOptional({ description: 'Logo path', example: 'templates/...jpeg' })
+  @ApiPropertyOptional({
+    description: 'Logo path',
+    example: 'templates/...jpeg',
+  })
   @IsOptional()
   @IsString()
   logo_path?: string;
 
-  @ApiPropertyOptional({ description: 'Product image path', example: 'templates/...png' })
+  @ApiPropertyOptional({
+    description: 'Product image path',
+    example: 'templates/...png',
+  })
   @IsOptional()
   @IsString()
   product_image_path?: string;
 
-  @ApiPropertyOptional({ description: 'Video path', example: 'creatives/...mp4' })
+  @ApiPropertyOptional({
+    description: 'Video path',
+    example: 'creatives/...mp4',
+  })
   @IsOptional()
   @IsString()
   video_path?: string;
 
-  @ApiPropertyOptional({ description: 'Template image path', example: 'templates/...png' })
+  @ApiPropertyOptional({
+    description: 'Template image path',
+    example: 'templates/...png',
+  })
   @IsOptional()
   @IsString()
   template_image_path?: string;
 
-  @ApiPropertyOptional({ description: 'Owner id (UUID)', example: 'f6a76615-1d2f-4066-99ca-82469b54d8d9' })
+  @ApiPropertyOptional({
+    description: 'Owner id (UUID)',
+    example: 'f6a76615-1d2f-4066-99ca-82469b54d8d9',
+  })
   @IsOptional()
   @IsUUID()
   owner_id?: string;
 
-  @ApiPropertyOptional({ description: 'Filename', example: '3c4d53f2-264c-447a-9b05-0d7e8ca2a94d.png' })
+  @ApiPropertyOptional({
+    description: 'Filename',
+    example: '3c4d53f2-264c-447a-9b05-0d7e8ca2a94d.png',
+  })
   @IsOptional()
   @IsString()
   file_name?: string;
@@ -96,4 +128,12 @@ export class CreateCreativeDto {
   @IsInt()
   @Min(0)
   campaign_count?: number;
+
+  @ApiPropertyOptional({
+    description: 'Template id (UUID)',
+    example: 'bbbbbbbbb-h4h4-h4h-aa37-aaaaaaaaaaa',
+  })
+  @IsOptional()
+  @IsUUID()
+  id_template?: string;
 }

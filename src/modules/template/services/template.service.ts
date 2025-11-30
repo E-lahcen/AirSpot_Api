@@ -858,7 +858,7 @@ export class TemplateService {
         '[Template Video] Starting video generation for template:',
         templateId,
       );
-      const tenantSlug = user.slug || this.tenantService.getSlug();
+      const tenantSlug = user?.slug || this.tenantService.getSlug();
       if (!tenantSlug) {
         throw new BadRequestException('Tenant context not found');
       }

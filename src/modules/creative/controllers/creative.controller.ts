@@ -40,6 +40,7 @@ export class CreativeController {
       createCreativeDto,
       user.id,
       user.tenantId,
+      user,
     );
   }
 

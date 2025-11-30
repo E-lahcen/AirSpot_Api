@@ -46,6 +46,8 @@ services:
       - redis
     networks:
       - shared
+    volumes:
+      - downloads:/data:rw
 
   redis:
     image: redis:alpine
@@ -69,8 +71,8 @@ services:
       - shared
 
 volumes:
-  #postgres_data:
+  # postgres_data:
   redis_data:
-
+  downloads:
 networks:
   shared:

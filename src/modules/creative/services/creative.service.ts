@@ -5,24 +5,53 @@ import { CreateCreativeDto, UpdateCreativeDto } from '../dto';
 import { FilterCreativeDto } from '../dto/filter-creative.dto';
 import { paginate, Pagination } from 'nestjs-typeorm-paginate';
 import { FindOptionsWhere, Like } from 'typeorm';
+import { TemplateService } from '@app/modules/template/services/template.service';
+import { AuthenticatedUser } from '@app/modules/auth/decorators';
 
 @Injectable()
 export class CreativeService {
-  constructor(private readonly tenantConnection: TenantConnectionService) {}
+  constructor(
+    private readonly tenantConnection: TenantConnectionService,
+    private readonly templateService: TemplateService,
+  ) {}
 
   async create(
     createCreativeDto: CreateCreativeDto,
     owner_id: string,
     organization_id: string,
+    user: AuthenticatedUser,
   ): Promise<Creative> {
     const creativeRepository =
       await this.tenantConnection.getRepository(Creative);
 
+    // Extract id_template from DTO as it's not a persisted field
+    const { id_template, ...creativeData } = createCreativeDto;
+
     const creative = creativeRepository.create({
-      ...createCreativeDto,
+      ...creativeData,
       organization_id,
       owner_id,
     });
+
+    if (id_template) {
+      const template = await this.templateService.findOne(id_template);
+
+      if (!template) {
+        throw new NotFoundException(
+          `Template with ID ${id_template} not found`,
+        );
+      }
+      console.log('Before Template Video Creation');
+      const templateVideo = await this.templateService.generateTemplateVideo(
+        id_template,
+        user,
+      );
+      console.log(
+        'Template Video Created  Successfully, Video Path: ',
+        templateVideo.videoPath,
+      );
+      creative.video_path = templateVideo.videoPath;
+    }
 
     return await creativeRepository.save(creative);
   }
