@@ -1,6 +1,6 @@
-import { QueryRunner } from "typeorm";
+import { QueryRunner } from 'typeorm';
 
-const UUID_DEFAULT = "(md5(random()::text || clock_timestamp()::text)::uuid)";
+const UUID_DEFAULT = '(md5(random()::text || clock_timestamp()::text)::uuid)';
 
 /**
  * Interface for tenant schema migrations
@@ -101,7 +101,7 @@ export const TenantMigrationHelpers = {
 export const TENANT_MIGRATIONS: TenantMigration[] = [
   {
     version: 1732233600000,
-    name: "InitialSchema",
+    name: 'InitialSchema',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Ensure uuid-ossp extension is available
       await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
@@ -266,7 +266,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1763914988652,
-    name: "UpdateTenantEntityAndAddedOthers",
+    name: 'UpdateTenantEntityAndAddedOthers',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Add deleted_at column to roles table
       await queryRunner.query(`
@@ -497,7 +497,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1763916003624,
-    name: "RemoveTenantOwnerFk",
+    name: 'RemoveTenantOwnerFk',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Remove deleted_at column from roles table (changing its type)
       await queryRunner.query(
@@ -523,7 +523,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1763917837527,
-    name: "RemoveOrganisationFromEntities",
+    name: 'RemoveOrganisationFromEntities',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Drop foreign key constraints from campaigns
       await queryRunner.query(
@@ -601,7 +601,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1763919549258,
-    name: "AddOwnerIdToEntities",
+    name: 'AddOwnerIdToEntities',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Remove deleted_at column from roles table (changing its type)
       await queryRunner.query(
@@ -719,7 +719,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764414355796,
-    name: "UserTenantEntity",
+    name: 'UserTenantEntity',
     skip: true,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     up: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
@@ -734,7 +734,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764415176775,
-    name: "UserTenantEntityUpdated",
+    name: 'UserTenantEntityUpdated',
     skip: true,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     up: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
@@ -749,7 +749,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764243000000,
-    name: "AddOrganizationMetadataToTenants",
+    name: 'AddOrganizationMetadataToTenants',
     skip: true,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     up: async (_queryRunner: QueryRunner, _schema: string): Promise<void> => {
@@ -764,7 +764,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764438816992,
-    name: "TemplateStoryboardEntities",
+    name: 'TemplateStoryboardEntities',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Create templates table
       await queryRunner.query(`
@@ -844,7 +844,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764451387072,
-    name: "CreativeEntityUpdate",
+    name: 'CreativeEntityUpdate',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       await queryRunner.query(
         `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_name"`,
@@ -991,7 +991,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764457409357,
-    name: "CreativeEntityUpdate",
+    name: 'CreativeEntityUpdate',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Remove old storage columns, keep file_name
       await queryRunner.query(
@@ -1137,7 +1137,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764518388726,
-    name: "FixInvitationEntity",
+    name: 'FixInvitationEntity',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Drop old columns from invitations table
       await queryRunner.query(
@@ -1286,7 +1286,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764519121783,
-    name: "FixInvitationAddedTenantId",
+    name: 'FixInvitationAddedTenantId',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Add tenant_id column to invitations table
       await queryRunner.query(
@@ -1302,7 +1302,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   },
   {
     version: 1764519394415,
-    name: "FixInvitationAddedTenantSlug",
+    name: 'FixInvitationAddedTenantSlug',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Add tenant_slug column to invitations table
       await queryRunner.query(
@@ -1314,6 +1314,480 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       await queryRunner.query(
         `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "tenant_slug"`,
       );
+    },
+  },
+  {
+    version: 1764532565765,
+    name: 'UpdatingCreativeAndAudienceEntity',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop existing invitation constraints before restructuring
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP CONSTRAINT IF EXISTS "FK_${schema}_invitations_invitor"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP CONSTRAINT IF EXISTS "FK_${schema}_invitations_role"`,
+      );
+
+      // Ensure audience enum exists
+      await queryRunner.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1
+            FROM pg_type t
+            JOIN pg_namespace n ON n.oid = t.typnamespace
+            WHERE t.typname = 'audiences_type_enum'
+              AND n.nspname = '${schema}'
+          ) THEN
+            EXECUTE 'CREATE TYPE "${schema}".audiences_type_enum AS ENUM (
+              ''Demographic'', ''Interest'', ''Geography'', ''Behavior'', ''Channel'', ''Delivery Time''
+            )';
+          END IF;
+        END $$;
+      `);
+
+      // Create audiences table if it does not exist
+      await queryRunner.query(`
+        CREATE TABLE IF NOT EXISTS "${schema}".audiences (
+          "id" uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "deleted_at" TIMESTAMP,
+          "organization_id" uuid NOT NULL,
+          "variation_id" uuid,
+          "type" "${schema}".audiences_type_enum NOT NULL,
+          "provider_id" integer,
+          "target_id" character varying(255),
+          "owner_id" uuid NOT NULL,
+          "name" character varying(255) NOT NULL,
+          "size" character varying(255) NOT NULL,
+          "reached" character varying(255) NOT NULL,
+          "platforms" json,
+          "campaigns" json,
+          "selected_locations" json,
+          "selected_interests" json,
+          "age_range" json,
+          "selected_genders" json,
+          CONSTRAINT "PK_${schema}_audiences" PRIMARY KEY ("id")
+        )
+      `);
+
+      // Drop outdated creative columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "orientation"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "theme"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_position"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "brand_name"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "price"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_name"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "features"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "show_qr_code"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "qr_code_text"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "logo_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_image_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "template_image_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "campaign_count"`,
+      );
+
+      // Remove invitation columns before re-adding with desired definitions
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "deleted_at"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "invitor_id"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "role_id"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "tenant_id"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "tenant_slug"`,
+      );
+
+      // Recreate invitation auditing columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "deleted_at" TIMESTAMP`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "invitor_id" uuid NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "tenant_id" uuid NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "tenant_slug" character varying NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "role_id" uuid`,
+      );
+
+      // Recreate creative detail columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "orientation" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "theme" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "video_position" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "brand_name" character varying(255)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "price" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "product_name" character varying(255)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "features" text array`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "show_qr_code" boolean NOT NULL DEFAULT false`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "qr_code_text" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "logo_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "product_image_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "video_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "template_image_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "file_name" character varying(500) NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "campaign_count" integer NOT NULL DEFAULT 0`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "s3_key" character varying(500) NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "s3_bucket" character varying(255) NOT NULL DEFAULT 'airspot-ctv-assets'`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "file_size" bigint NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "mime_type" character varying(100) NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "duration" integer`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "end_duration" integer`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "thumbnail_s3_key" character varying(500)`,
+      );
+
+      // Restore invitation metadata columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "invited_by" uuid NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "role" character varying(50) NOT NULL DEFAULT 'member'`,
+      );
+
+      // Refresh email column definition
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "email"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "email" character varying(255) NOT NULL`,
+      );
+
+      // Recreate token column and constraint
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP CONSTRAINT IF EXISTS "UQ_${schema}_invitations_token"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "token"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "token" character varying(255) NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD CONSTRAINT "UQ_${schema}_invitations_token" UNIQUE ("token")`,
+      );
+
+      // Reapply invitation foreign keys
+      await queryRunner.query(`
+        ALTER TABLE "${schema}".invitations
+        ADD CONSTRAINT "FK_${schema}_invitations_role"
+        FOREIGN KEY ("role_id") REFERENCES "${schema}".roles("id")
+        ON DELETE NO ACTION ON UPDATE NO ACTION
+      `);
+      await queryRunner.query(`
+        ALTER TABLE "${schema}".invitations
+        ADD CONSTRAINT "FK_${schema}_invitations_invitor"
+        FOREIGN KEY ("invitor_id") REFERENCES "${schema}".users("id")
+        ON DELETE NO ACTION ON UPDATE NO ACTION
+      `);
+
+      // Add audience foreign keys
+      await queryRunner.query(`
+        ALTER TABLE "${schema}".audiences
+        ADD CONSTRAINT "FK_${schema}_audiences_owner"
+        FOREIGN KEY ("owner_id") REFERENCES "${schema}".users("id")
+        ON DELETE NO ACTION ON UPDATE NO ACTION
+      `);
+      await queryRunner.query(`
+        ALTER TABLE "${schema}".audiences
+        ADD CONSTRAINT "FK_${schema}_audiences_variation"
+        FOREIGN KEY ("variation_id") REFERENCES "${schema}".ad_variations("id")
+        ON DELETE NO ACTION ON UPDATE NO ACTION
+      `);
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop audience foreign keys
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".audiences DROP CONSTRAINT IF EXISTS "FK_${schema}_audiences_variation"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".audiences DROP CONSTRAINT IF EXISTS "FK_${schema}_audiences_owner"`,
+      );
+
+      // Drop invitation foreign keys
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP CONSTRAINT IF EXISTS "FK_${schema}_invitations_invitor"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP CONSTRAINT IF EXISTS "FK_${schema}_invitations_role"`,
+      );
+
+      // Revert token definition
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP CONSTRAINT IF EXISTS "UQ_${schema}_invitations_token"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "token"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "token" character varying NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD CONSTRAINT "UQ_${schema}_invitations_token" UNIQUE ("token")`,
+      );
+
+      // Revert email definition
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "email"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "email" character varying NOT NULL`,
+      );
+
+      // Remove invitation metadata columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "role"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "invited_by"`,
+      );
+
+      // Remove creative extended columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "thumbnail_s3_key"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "end_duration"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "duration"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "mime_type"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_size"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_bucket"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "s3_key"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "campaign_count"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "file_name"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "template_image_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_image_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "logo_path"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "qr_code_text"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "show_qr_code"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "features"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "product_name"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "price"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "brand_name"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "video_position"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "theme"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives DROP COLUMN IF EXISTS "orientation"`,
+      );
+
+      // Remove invitation references
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "role_id"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "tenant_slug"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "tenant_id"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "invitor_id"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations DROP COLUMN IF EXISTS "deleted_at"`,
+      );
+
+      // Restore previously removed invitation columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "tenant_slug" character varying NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "tenant_id" uuid NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "role_id" uuid`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "invitor_id" uuid NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".invitations ADD COLUMN IF NOT EXISTS "deleted_at" TIMESTAMP`,
+      );
+
+      // Restore creative summary columns
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "campaign_count" integer NOT NULL DEFAULT 0`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "template_image_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "video_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "product_image_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "logo_path" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "qr_code_text" character varying(500)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "show_qr_code" boolean NOT NULL DEFAULT false`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "features" text array`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "product_name" character varying(255)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "price" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "brand_name" character varying(255)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "video_position" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "theme" character varying(50)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}".creatives ADD COLUMN IF NOT EXISTS "orientation" character varying(50)`,
+      );
+
+      // Drop audiences table and enum
+      await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".audiences`);
+      await queryRunner.query(
+        `DROP TYPE IF EXISTS "${schema}".audiences_type_enum`,
+      );
+
+      // Reapply invitation foreign keys to match previous state
+      await queryRunner.query(`
+        ALTER TABLE "${schema}".invitations
+        ADD CONSTRAINT "FK_${schema}_invitations_role"
+        FOREIGN KEY ("role_id") REFERENCES "${schema}".roles("id")
+        ON DELETE NO ACTION ON UPDATE NO ACTION
+      `);
+      await queryRunner.query(`
+        ALTER TABLE "${schema}".invitations
+        ADD CONSTRAINT "FK_${schema}_invitations_invitor"
+        FOREIGN KEY ("invitor_id") REFERENCES "${schema}".users("id")
+        ON DELETE NO ACTION ON UPDATE NO ACTION
+      `);
     },
   },
 ];

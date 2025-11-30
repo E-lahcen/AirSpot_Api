@@ -41,22 +41,22 @@ export class CreateAudienceDto {
   @ApiProperty({ description: 'Selected locations', type: [String] })
   @IsArray()
   @IsString({ each: true })
-  selectedLocations: string[];
+  selected_locations: string[];
 
   @ApiProperty({ description: 'Selected interests', type: [String] })
   @IsArray()
   @IsString({ each: true })
-  selectedInterests: string[];
+  selected_interests: string[];
 
   @ApiProperty({ description: 'Age range', type: [Number] })
   @IsArray()
   @IsNumber({}, { each: true })
-  ageRange: number[];
+  age_range: number[];
 
   @ApiProperty({ description: 'Selected genders', type: [String] })
   @IsArray()
   @IsString({ each: true })
-  selectedGenders: string[];
+  selected_genders: string[];
 
   @ApiPropertyOptional({ description: 'Created at timestamp' })
   @IsDateString()

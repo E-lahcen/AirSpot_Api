@@ -4,20 +4,20 @@ import { BaseEntity } from '@app/common/entities/base.entity';
 import { User } from '@app/modules/user/entities/user.entity';
 
 export enum TargetType {
-  DEMOGRAPHIC = 'DEMOGRAPHIC',
-  INTEREST = 'INTEREST',
-  GEOGRAPHY = 'GEOGRAPHY',
-  BEHAVIOR = 'BEHAVIOR',
-  CHANNEL = 'CHANNEL',
-  DELIVERY_TIME = 'DELIVERY_TIME',
+  DEMOGRAPHIC = 'Demographic',
+  INTEREST = 'Interest',
+  GEOGRAPHY = 'Geography',
+  BEHAVIOR = 'Behavior',
+  CHANNEL = 'Channel',
+  DELIVERY_TIME = 'Delivery Time',
 }
 
-@Entity('target_group_selections')
+@Entity('audiences')
 export class Audience extends BaseEntity {
   @Column({ type: 'uuid' })
   organization_id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   variation_id: string;
 
   @Column({
@@ -26,10 +26,10 @@ export class Audience extends BaseEntity {
   })
   type: TargetType;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   provider_id: number;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   target_id: string;
 
   @Column({ type: 'uuid' })
@@ -39,7 +39,36 @@ export class Audience extends BaseEntity {
   @JoinColumn({ name: 'owner_id' })
   owner: User;
 
-  @ManyToOne(() => AdVariation, (variation) => variation.audiences)
+  @ManyToOne(() => AdVariation, (variation) => variation.audiences, {
+    nullable: true,
+  })
   @JoinColumn({ name: 'variation_id' })
   ad_variation: AdVariation;
+
+  @Column({ type: 'varchar', length: 255 })
+  name: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  size: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  reached: string;
+
+  @Column({ type: 'json', nullable: true })
+  platforms: string[];
+
+  @Column({ type: 'json', nullable: true })
+  campaigns: number;
+
+  @Column({ type: 'json', nullable: true })
+  selected_locations: string[];
+
+  @Column({ type: 'json', nullable: true })
+  selected_interests: string[];
+
+  @Column({ type: 'json', nullable: true })
+  age_range: number[];
+
+  @Column({ type: 'json', nullable: true })
+  selected_genders: string[];
 }
