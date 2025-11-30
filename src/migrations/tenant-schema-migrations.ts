@@ -1,6 +1,6 @@
 import { QueryRunner } from 'typeorm';
 
-const UUID_DEFAULT = '(md5(random()::text || clock_timestamp()::text)::uuid)';
+// const UUID_DEFAULT = '(md5(random()::text || clock_timestamp()::text)::uuid)';
 
 /**
  * Interface for tenant schema migrations
@@ -67,13 +67,13 @@ export const TenantMigrationHelpers = {
 
 export const TENANT_MIGRATIONS: TenantMigration[] = [
   {
-    version: 1764537799256,
-    name: 'InitialSchema',
+    version: 1764541263018,
+    name: 'InitialMigration',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Create roles table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".roles (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
           created_at TIMESTAMP NOT NULL DEFAULT now(),
           updated_at TIMESTAMP NOT NULL DEFAULT now(),
           deleted_at TIMESTAMP,
@@ -87,7 +87,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       // Create users table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".users (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
           first_name character varying(255),
           last_name character varying(255),
           full_name character varying(255),
@@ -111,7 +111,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
         )
       `);
 
-      // Create index on users_roles_roles
+      // Create indexes on users_roles_roles
       await queryRunner.query(`
         CREATE INDEX IF NOT EXISTS "IDX_${schema}_users_roles_user" ON "${schema}".users_roles_roles (user_id)
       `);
@@ -141,7 +141,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       // Create invitations table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".invitations (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
           created_at TIMESTAMP NOT NULL DEFAULT now(),
           updated_at TIMESTAMP NOT NULL DEFAULT now(),
           deleted_at TIMESTAMP,
@@ -163,7 +163,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       // Create templates table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".templates (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
           created_at TIMESTAMP NOT NULL DEFAULT now(),
           updated_at TIMESTAMP NOT NULL DEFAULT now(),
           deleted_at TIMESTAMP,
@@ -191,7 +191,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       // Create storyboards table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".storyboards (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
           created_at TIMESTAMP NOT NULL DEFAULT now(),
           updated_at TIMESTAMP NOT NULL DEFAULT now(),
           deleted_at TIMESTAMP,
@@ -236,7 +236,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       // Create campaigns table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".campaigns (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
           created_at TIMESTAMP NOT NULL DEFAULT now(),
           updated_at TIMESTAMP NOT NULL DEFAULT now(),
           deleted_at TIMESTAMP,
@@ -254,10 +254,72 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
         )
       `);
 
+      // Create audience type enum
+      await queryRunner.query(`
+        DO $$ BEGIN
+          CREATE TYPE "${schema}".audiences_type_enum AS ENUM('Demographic', 'Interest', 'Geography', 'Behavior', 'Channel', 'Delivery Time');
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+
+      // Create audiences table
+      await queryRunner.query(`
+        CREATE TABLE IF NOT EXISTS "${schema}".audiences (
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
+          created_at TIMESTAMP NOT NULL DEFAULT now(),
+          updated_at TIMESTAMP NOT NULL DEFAULT now(),
+          deleted_at TIMESTAMP,
+          organization_id uuid NOT NULL,
+          variation_id uuid,
+          type "${schema}".audiences_type_enum NOT NULL,
+          provider_id integer,
+          target_id character varying(255),
+          owner_id uuid NOT NULL,
+          name character varying(255) NOT NULL,
+          size character varying(255) NOT NULL,
+          reached character varying(255) NOT NULL,
+          platforms json,
+          campaigns json,
+          selected_locations json,
+          selected_interests json,
+          age_range json,
+          selected_genders json,
+          CONSTRAINT "PK_${schema}_audiences" PRIMARY KEY (id)
+        )
+      `);
+
+      // Create ad variations bidding strategy enum
+      await queryRunner.query(`
+        DO $$ BEGIN
+          CREATE TYPE "${schema}".ad_variations_bidding_strategy_enum AS ENUM('AUTOMATIC', 'MANUAL_CPM');
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+
+      // Create ad_variations table
+      await queryRunner.query(`
+        CREATE TABLE IF NOT EXISTS "${schema}".ad_variations (
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
+          created_at TIMESTAMP NOT NULL DEFAULT now(),
+          updated_at TIMESTAMP NOT NULL DEFAULT now(),
+          deleted_at TIMESTAMP,
+          organization_id uuid NOT NULL,
+          campaign_id uuid NOT NULL,
+          name character varying(255) NOT NULL,
+          creative_id uuid,
+          bidding_strategy "${schema}".ad_variations_bidding_strategy_enum NOT NULL DEFAULT 'AUTOMATIC',
+          cpm_bid numeric(10,2),
+          owner_id uuid NOT NULL,
+          CONSTRAINT "PK_${schema}_ad_variations" PRIMARY KEY (id)
+        )
+      `);
+
       // Create creatives table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".creatives (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
+          id uuid NOT NULL DEFAULT uuid_generate_v4(),
           created_at TIMESTAMP NOT NULL DEFAULT now(),
           updated_at TIMESTAMP NOT NULL DEFAULT now(),
           deleted_at TIMESTAMP,
@@ -284,170 +346,181 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
         )
       `);
 
-      // Create ad variations bidding strategy enum
-      await queryRunner.query(`
-        DO $$ BEGIN
-          CREATE TYPE "${schema}".ad_variations_bidding_strategy_enum AS ENUM('AUTOMATIC', 'MANUAL_CPM');
-        EXCEPTION
-          WHEN duplicate_object THEN null;
-        END $$;
-      `);
-
-      // Create ad_variations table
-      await queryRunner.query(`
-        CREATE TABLE IF NOT EXISTS "${schema}".ad_variations (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
-          created_at TIMESTAMP NOT NULL DEFAULT now(),
-          updated_at TIMESTAMP NOT NULL DEFAULT now(),
-          deleted_at TIMESTAMP,
-          organization_id uuid NOT NULL,
-          campaign_id uuid NOT NULL,
-          name character varying(255) NOT NULL,
-          creative_id uuid,
-          bidding_strategy "${schema}".ad_variations_bidding_strategy_enum NOT NULL DEFAULT 'AUTOMATIC',
-          cpm_bid numeric(10,2),
-          owner_id uuid NOT NULL,
-          CONSTRAINT "PK_${schema}_ad_variations" PRIMARY KEY (id)
-        )
-      `);
-
-      // Create audience type enum
-      await queryRunner.query(`
-        DO $$ BEGIN
-          CREATE TYPE "${schema}".audiences_type_enum AS ENUM('Demographic', 'Interest', 'Geography', 'Behavior', 'Channel', 'Delivery Time');
-        EXCEPTION
-          WHEN duplicate_object THEN null;
-        END $$;
-      `);
-
-      // Create audiences table
-      await queryRunner.query(`
-        CREATE TABLE IF NOT EXISTS "${schema}".audiences (
-          id uuid NOT NULL DEFAULT ${UUID_DEFAULT},
-          created_at TIMESTAMP NOT NULL DEFAULT now(),
-          updated_at TIMESTAMP NOT NULL DEFAULT now(),
-          deleted_at TIMESTAMP,
-          organization_id uuid NOT NULL,
-          variation_id uuid,
-          type "${schema}".audiences_type_enum NOT NULL,
-          provider_id integer,
-          target_id character varying(255),
-          owner_id uuid NOT NULL,
-          name character varying(255) NOT NULL,
-          size character varying(255) NOT NULL,
-          reached character varying(255) NOT NULL,
-          platforms json,
-          campaigns json,
-          selected_locations json,
-          selected_interests json,
-          age_range json,
-          selected_genders json,
-          CONSTRAINT "PK_${schema}_audiences" PRIMARY KEY (id)
-        )
-      `);
-
       // Add foreign key constraints
       await queryRunner.query(`
-        ALTER TABLE "${schema}".users_roles_roles 
-        ADD CONSTRAINT "FK_${schema}_users_roles_user" 
-        FOREIGN KEY (user_id) REFERENCES "${schema}".users(id) 
-        ON DELETE CASCADE ON UPDATE CASCADE
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_users_roles_user'
+          ) THEN
+            ALTER TABLE "${schema}".users_roles_roles 
+            ADD CONSTRAINT "FK_${schema}_users_roles_user" 
+            FOREIGN KEY (user_id) REFERENCES "${schema}".users(id) 
+            ON DELETE CASCADE ON UPDATE CASCADE;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".users_roles_roles 
-        ADD CONSTRAINT "FK_${schema}_users_roles_role" 
-        FOREIGN KEY (role_id) REFERENCES "${schema}".roles(id) 
-        ON DELETE CASCADE ON UPDATE CASCADE
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_users_roles_role'
+          ) THEN
+            ALTER TABLE "${schema}".users_roles_roles 
+            ADD CONSTRAINT "FK_${schema}_users_roles_role" 
+            FOREIGN KEY (role_id) REFERENCES "${schema}".roles(id) 
+            ON DELETE CASCADE ON UPDATE CASCADE;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".invitations 
-        ADD CONSTRAINT "FK_${schema}_invitations_invitor" 
-        FOREIGN KEY (invitor_id) REFERENCES "${schema}".users(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_invitations_invitor'
+          ) THEN
+            ALTER TABLE "${schema}".invitations 
+            ADD CONSTRAINT "FK_${schema}_invitations_invitor" 
+            FOREIGN KEY (invitor_id) REFERENCES "${schema}".users(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".invitations 
-        ADD CONSTRAINT "FK_${schema}_invitations_role" 
-        FOREIGN KEY (role_id) REFERENCES "${schema}".roles(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_invitations_role'
+          ) THEN
+            ALTER TABLE "${schema}".invitations 
+            ADD CONSTRAINT "FK_${schema}_invitations_role" 
+            FOREIGN KEY (role_id) REFERENCES "${schema}".roles(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".templates 
-        ADD CONSTRAINT "FK_${schema}_templates_owner" 
-        FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_templates_owner'
+          ) THEN
+            ALTER TABLE "${schema}".templates 
+            ADD CONSTRAINT "FK_${schema}_templates_owner" 
+            FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".storyboards 
-        ADD CONSTRAINT "FK_${schema}_storyboards_owner" 
-        FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_storyboards_owner'
+          ) THEN
+            ALTER TABLE "${schema}".storyboards 
+            ADD CONSTRAINT "FK_${schema}_storyboards_owner" 
+            FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".campaigns 
-        ADD CONSTRAINT "FK_${schema}_campaigns_owner" 
-        FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_campaigns_owner'
+          ) THEN
+            ALTER TABLE "${schema}".campaigns 
+            ADD CONSTRAINT "FK_${schema}_campaigns_owner" 
+            FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".creatives 
-        ADD CONSTRAINT "FK_${schema}_creatives_owner" 
-        FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_audiences_owner'
+          ) THEN
+            ALTER TABLE "${schema}".audiences 
+            ADD CONSTRAINT "FK_${schema}_audiences_owner" 
+            FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".ad_variations 
-        ADD CONSTRAINT "FK_${schema}_ad_variations_owner" 
-        FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_audiences_variation'
+          ) THEN
+            ALTER TABLE "${schema}".audiences 
+            ADD CONSTRAINT "FK_${schema}_audiences_variation" 
+            FOREIGN KEY (variation_id) REFERENCES "${schema}".ad_variations(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".audiences 
-        ADD CONSTRAINT "FK_${schema}_audiences_owner" 
-        FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_ad_variations_owner'
+          ) THEN
+            ALTER TABLE "${schema}".ad_variations 
+            ADD CONSTRAINT "FK_${schema}_ad_variations_owner" 
+            FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".ad_variations 
-        ADD CONSTRAINT "FK_${schema}_ad_variations_campaign" 
-        FOREIGN KEY (campaign_id) REFERENCES "${schema}".campaigns(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_ad_variations_campaign'
+          ) THEN
+            ALTER TABLE "${schema}".ad_variations 
+            ADD CONSTRAINT "FK_${schema}_ad_variations_campaign" 
+            FOREIGN KEY (campaign_id) REFERENCES "${schema}".campaigns(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".ad_variations 
-        ADD CONSTRAINT "FK_${schema}_ad_variations_creative" 
-        FOREIGN KEY (creative_id) REFERENCES "${schema}".creatives(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_ad_variations_creative'
+          ) THEN
+            ALTER TABLE "${schema}".ad_variations 
+            ADD CONSTRAINT "FK_${schema}_ad_variations_creative" 
+            FOREIGN KEY (creative_id) REFERENCES "${schema}".creatives(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
 
       await queryRunner.query(`
-        ALTER TABLE "${schema}".audiences 
-        ADD CONSTRAINT "FK_${schema}_audiences_variation" 
-        FOREIGN KEY (variation_id) REFERENCES "${schema}".ad_variations(id) 
-        ON DELETE NO ACTION ON UPDATE NO ACTION
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'FK_${schema}_creatives_owner'
+          ) THEN
+            ALTER TABLE "${schema}".creatives 
+            ADD CONSTRAINT "FK_${schema}_creatives_owner" 
+            FOREIGN KEY (owner_id) REFERENCES "${schema}".users(id) 
+            ON DELETE NO ACTION ON UPDATE NO ACTION;
+          END IF;
+        END $$;
       `);
     },
     down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       // Drop foreign key constraints first
       await queryRunner.query(`
-        ALTER TABLE IF EXISTS "${schema}".audiences 
-        DROP CONSTRAINT IF EXISTS "FK_${schema}_audiences_variation"
-      `);
-
-      await queryRunner.query(`
-        ALTER TABLE IF EXISTS "${schema}".audiences 
-        DROP CONSTRAINT IF EXISTS "FK_${schema}_audiences_owner"
+        ALTER TABLE IF EXISTS "${schema}".creatives 
+        DROP CONSTRAINT IF EXISTS "FK_${schema}_creatives_owner"
       `);
 
       await queryRunner.query(`
@@ -466,8 +539,13 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       `);
 
       await queryRunner.query(`
-        ALTER TABLE IF EXISTS "${schema}".creatives 
-        DROP CONSTRAINT IF EXISTS "FK_${schema}_creatives_owner"
+        ALTER TABLE IF EXISTS "${schema}".audiences 
+        DROP CONSTRAINT IF EXISTS "FK_${schema}_audiences_variation"
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE IF EXISTS "${schema}".audiences 
+        DROP CONSTRAINT IF EXISTS "FK_${schema}_audiences_owner"
       `);
 
       await queryRunner.query(`
@@ -514,9 +592,9 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       );
 
       // Drop tables
-      await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".audiences`);
-      await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".ad_variations`);
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".creatives`);
+      await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".ad_variations`);
+      await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".audiences`);
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".campaigns`);
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".storyboards`);
       await queryRunner.query(`DROP TABLE IF EXISTS "${schema}".templates`);
@@ -529,10 +607,10 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
 
       // Drop enums
       await queryRunner.query(
-        `DROP TYPE IF EXISTS "${schema}".audiences_type_enum`,
+        `DROP TYPE IF EXISTS "${schema}".ad_variations_bidding_strategy_enum`,
       );
       await queryRunner.query(
-        `DROP TYPE IF EXISTS "${schema}".ad_variations_bidding_strategy_enum`,
+        `DROP TYPE IF EXISTS "${schema}".audiences_type_enum`,
       );
       await queryRunner.query(
         `DROP TYPE IF EXISTS "${schema}".campaigns_status_enum`,

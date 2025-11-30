@@ -1,9 +1,12 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class InitialSchema1764537799256 implements MigrationInterface {
-  name = 'InitialSchema1764537799256';
+export class InitialMigration1764541263018 implements MigrationInterface {
+  name = 'InitialMigration1764541263018';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `CREATE TABLE "tenants" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "slug" character varying(100) NOT NULL, "company_name" character varying(255) NOT NULL, "schema_name" character varying(100) NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "owner_email" character varying(255) NOT NULL, "owner_id" uuid, "created_by" character varying(255), "members_count" integer NOT NULL DEFAULT '0', "description" text, "logo" text, "region" character varying(100), "default_role" character varying(50), "enforce_domain" boolean NOT NULL DEFAULT false, "domain" character varying(255), "firebase_tenant_id" character varying(128), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_2310ecc5cb8be427097154b18fc" UNIQUE ("slug"), CONSTRAINT "UQ_c2a961556326eec0e3b19f3ced5" UNIQUE ("schema_name"), CONSTRAINT "UQ_0412ae68322ab2f0b5830531117" UNIQUE ("firebase_tenant_id"), CONSTRAINT "PK_53be67a04681c66b87ee27c9321" PRIMARY KEY ("id"))`,
+    );
     await queryRunner.query(
       `CREATE TABLE "user_tenant" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "email" character varying NOT NULL, "user_id" uuid NOT NULL, "tenant_id" uuid NOT NULL, CONSTRAINT "UQ_225891cc5883f1c35aa9091642c" UNIQUE ("user_id", "tenant_id"), CONSTRAINT "PK_ae07d48a61ca20ab3586d397a71" PRIMARY KEY ("id"))`,
     );
@@ -63,40 +66,6 @@ export class InitialSchema1764537799256 implements MigrationInterface {
     );
     await queryRunner.query(
       `CREATE INDEX "IDX_38703d4da3789a6ad8552ba783" ON "users_roles_roles" ("role_id") `,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" DROP CONSTRAINT "tenants_tenant_id_key"`,
-    );
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "tenant_id"`);
-    await queryRunner.query(`ALTER TABLE "tenants" ADD "owner_id" uuid`);
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD "created_by" character varying(255)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD "members_count" integer NOT NULL DEFAULT '0'`,
-    );
-    await queryRunner.query(`ALTER TABLE "tenants" ADD "description" text`);
-    await queryRunner.query(`ALTER TABLE "tenants" ADD "logo" text`);
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD "region" character varying(100)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD "default_role" character varying(50)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD "enforce_domain" boolean NOT NULL DEFAULT false`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD "domain" character varying(255)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ALTER COLUMN "is_active" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ALTER COLUMN "created_at" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ALTER COLUMN "updated_at" SET NOT NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE "user_tenant" ADD CONSTRAINT "FK_2393aeb9c992e95d200b13528b5" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
@@ -186,34 +155,6 @@ export class InitialSchema1764537799256 implements MigrationInterface {
       `ALTER TABLE "user_tenant" DROP CONSTRAINT "FK_2393aeb9c992e95d200b13528b5"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "tenants" ALTER COLUMN "updated_at" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ALTER COLUMN "created_at" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ALTER COLUMN "is_active" DROP NOT NULL`,
-    );
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "domain"`);
-    await queryRunner.query(
-      `ALTER TABLE "tenants" DROP COLUMN "enforce_domain"`,
-    );
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "default_role"`);
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "region"`);
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "logo"`);
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "description"`);
-    await queryRunner.query(
-      `ALTER TABLE "tenants" DROP COLUMN "members_count"`,
-    );
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "created_by"`);
-    await queryRunner.query(`ALTER TABLE "tenants" DROP COLUMN "owner_id"`);
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD "tenant_id" character varying(100) NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "tenants" ADD CONSTRAINT "tenants_tenant_id_key" UNIQUE ("tenant_id")`,
-    );
-    await queryRunner.query(
       `DROP INDEX "public"."IDX_38703d4da3789a6ad8552ba783"`,
     );
     await queryRunner.query(
@@ -239,5 +180,6 @@ export class InitialSchema1764537799256 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE "users"`);
     await queryRunner.query(`DROP TABLE "roles"`);
     await queryRunner.query(`DROP TABLE "user_tenant"`);
+    await queryRunner.query(`DROP TABLE "tenants"`);
   }
 }
