@@ -1,13 +1,23 @@
 #!/bin/bash
-# Production Migration Script
-# This script connects to the production database and runs pending migrations
+# Production Migration Generator
+# This script generates a new migration based on entity changes
 
 set -e
 
 echo "====================================="
-echo "  Production Database Migration"
+echo "  Generate Production Migration"
 echo "====================================="
 echo ""
+
+# Check if migration name is provided
+if [ -z "$1" ]; then
+    echo "ERROR: Migration name is required"
+    echo "Usage: $0 <migration-name>"
+    echo "Example: $0 add-user-phone-number"
+    exit 1
+fi
+
+MIGRATION_NAME=$1
 
 # Check if required environment variables are set
 if [ -z "$DB_HOST" ] || [ -z "$DB_NAME" ] || [ -z "$DB_USERNAME" ]; then
@@ -20,6 +30,7 @@ echo "Database Host: $DB_HOST"
 echo "Database Name: $DB_NAME"
 echo "Database User: $DB_USERNAME"
 echo "Node Environment: $NODE_ENV"
+echo "Migration Name: $MIGRATION_NAME"
 echo ""
 
 # Determine the correct data-source path based on environment
@@ -28,46 +39,42 @@ if [ "$NODE_ENV" = "production" ] && [ -f "/app/dist/src/config/data-source.js" 
     # Running in production Docker container with compiled code
     DATA_SOURCE_PATH="/app/dist/src/config/data-source.js"
     TYPEORM_CLI="node /app/node_modules/typeorm/cli.js"
+    MIGRATION_DIR="/app/dist/src/migrations"
     echo "✓ Using compiled production code"
 elif [ "$NODE_ENV" = "production" ] && [ -f "dist/src/config/data-source.js" ]; then
     # Running from project root with compiled code
     DATA_SOURCE_PATH="dist/src/config/data-source.js"
     TYPEORM_CLI="node node_modules/typeorm/cli.js"
+    MIGRATION_DIR="dist/src/migrations"
     echo "✓ Using local compiled code"
 else
     # Running in development environment
     DATA_SOURCE_PATH="src/config/data-source.ts"
     TYPEORM_CLI="npx ts-node ./node_modules/typeorm/cli.js"
+    MIGRATION_DIR="src/migrations"
     echo "✓ Using TypeScript source code"
 fi
 
 echo "Data Source: $DATA_SOURCE_PATH"
+echo "Migration Directory: $MIGRATION_DIR"
 echo ""
 
-# Prompt for confirmation in production
-read -p "Are you sure you want to run migrations on production? (yes/no): " CONFIRM
-if [ "$CONFIRM" != "yes" ]; then
-    echo "Migration cancelled"
-    exit 0
-fi
+# Generate timestamp
+TIMESTAMP=$(date +%s)
+MIGRATION_FILE="${TIMESTAMP}-${MIGRATION_NAME}"
+
+echo "Generating migration: $MIGRATION_FILE"
+echo ""
+
+# Generate migration
+$TYPEORM_CLI migration:generate -d $DATA_SOURCE_PATH $MIGRATION_DIR/$MIGRATION_FILE
 
 echo ""
-echo "Showing pending migrations..."
-$TYPEORM_CLI migration:show -d $DATA_SOURCE_PATH
-
+echo "✓ Migration generated successfully!"
 echo ""
-read -p "Continue with migration? (yes/no): " CONFIRM2
-if [ "$CONFIRM2" != "yes" ]; then
-    echo "Migration cancelled"
-    exit 0
-fi
-
+echo "Migration file created in: $MIGRATION_DIR/"
 echo ""
-echo "Running migrations..."
-$TYPEORM_CLI migration:run -d $DATA_SOURCE_PATH
-
-echo ""
-echo "✓ Migrations completed successfully!"
-echo ""
-echo "Showing migration status..."
-$TYPEORM_CLI migration:show -d $DATA_SOURCE_PATH
+echo "Next steps:"
+echo "1. Review the generated migration file"
+echo "2. Test it in debug environment: npm run migrate:debug"
+echo "3. Run it in production: npm run migrate:prod"

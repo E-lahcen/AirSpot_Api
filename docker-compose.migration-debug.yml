@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for testing
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: airspot_migration_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_debug_data:/var/lib/postgresql/data
+    networks:
+      - migration_debug
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for testing
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    networks:
+      - migration_debug
+
+  # API service built with production Dockerfile
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.migration-debug
+      args:
+        NODE_VERSION: "22.14.0"
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: airspot_migration_test
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_WEB_API_KEY: ${FIREBASE_WEB_API_KEY}
+      SMTP_HOST: ${SMTP_HOST:-smtp.example.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-user@example.com}
+      SMTP_PASS: ${SMTP_PASS:-password}
+      SMTP_FROM: ${SMTP_FROM:-noreply@example.com}
+      AUTO_SETUP_MULTITENANCY: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - migration_debug
+    # Override entrypoint for migration testing
+    command: ["tail", "-f", "/dev/null"]
+
+volumes:
+  postgres_debug_data:
+
+networks:
+  migration_debug:
+    driver: bridge

@@ -2,11 +2,17 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+# Install bash for migration scripts
+RUN apk add --no-cache bash
+
 COPY package*.json ./
 
 RUN npm install
 
 COPY . .
+
+# Ensure scripts have execute permissions
+RUN chmod +x scripts/*.sh
 
 EXPOSE 3000
 
