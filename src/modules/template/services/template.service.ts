@@ -852,7 +852,7 @@ export class TemplateService {
   async generateTemplateVideo(
     templateId: string,
     user: AuthenticatedUser,
-  ): Promise<{ videoPath: string; filename: string; publicUrl: string }> {
+  ): Promise<{ videoPath: string; filename: string }> {
     try {
       console.log(
         '[Template Video] Starting video generation for template:',
@@ -953,10 +953,12 @@ export class TemplateService {
       );
 
       // Combine videos based on orientation and video position
-      const outputFilename = `${randomUUID()}.mp4`;
-      const outputDir = join(this.STORAGE_PATH, tenantSlug, 'videos');
-      await mkdir(outputDir, { recursive: true });
-      const outputPath = join(outputDir, outputFilename);
+      const STORAGE_PATH = process.env.STORAGE_PATH || '/data/videos';
+      const storageDir = join(STORAGE_PATH, tenantSlug);
+      await mkdir(storageDir, { recursive: true });
+      const videoId = randomUUID();
+      const outputFilename = `${videoId}.mp4`;
+      const outputPath = join(storageDir, outputFilename);
       console.log(
         '[Template Video] Combining videos, output path:',
         outputPath,
@@ -981,13 +983,8 @@ export class TemplateService {
       });
 
       const relativePath = `creatives/${tenantSlug}/${outputFilename}`;
-      const hostDomain =
-        process.env.HOST_DOMAIN || 'https://airspot-backend.dba.ma';
-      const publicUrl = `${hostDomain}/api/v1/video-download/public/file/${encodeURIComponent(relativePath)}`;
-
       console.log('[Template Video] Video generation complete:', outputPath);
-      console.log('[Template Video] Public URL:', publicUrl);
-      return { videoPath: relativePath, filename: outputFilename, publicUrl };
+      return { videoPath: relativePath, filename: outputFilename };
     } catch (error) {
       console.error('[Template Video] Error generating video:', error);
       if (

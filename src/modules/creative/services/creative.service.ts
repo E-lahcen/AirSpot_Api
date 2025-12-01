@@ -46,11 +46,15 @@ export class CreativeService {
         id_template,
         user,
       );
+
+      const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma';
+      const publicUrl = `${baseUrl}/api/v1/video-download/public/file/${encodeURIComponent(templateVideo.videoPath)}`;
+
       console.log(
         'Template Video Created  Successfully, Video Path: ',
-        templateVideo.publicUrl,
+        publicUrl,
       );
-      creative.video_path = templateVideo.publicUrl;
+      creative.video_path = publicUrl;
     }
 
     return await creativeRepository.save(creative);

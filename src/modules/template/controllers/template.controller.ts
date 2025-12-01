@@ -195,7 +195,12 @@ export class TemplateController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.templateService.generateTemplateVideo(id, user);
+    const result = await this.templateService.generateTemplateVideo(id, user);
+    const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma';
+    return {
+      ...result,
+      publicUrl: `${baseUrl}/api/v1/video-download/public/file/${encodeURIComponent(result.videoPath)}`,
+    };
   }
 }
 
