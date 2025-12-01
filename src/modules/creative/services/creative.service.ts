@@ -48,9 +48,9 @@ export class CreativeService {
       );
       console.log(
         'Template Video Created  Successfully, Video Path: ',
-        templateVideo.videoPath,
+        templateVideo.publicUrl,
       );
-      creative.video_path = templateVideo.videoPath;
+      creative.video_path = templateVideo.publicUrl;
     }
 
     return await creativeRepository.save(creative);

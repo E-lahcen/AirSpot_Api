@@ -852,7 +852,7 @@ export class TemplateService {
   async generateTemplateVideo(
     templateId: string,
     user: AuthenticatedUser,
-  ): Promise<{ videoPath: string; filename: string }> {
+  ): Promise<{ videoPath: string; filename: string; publicUrl: string }> {
     try {
       console.log(
         '[Template Video] Starting video generation for template:',
@@ -980,9 +980,14 @@ export class TemplateService {
         );
       });
 
-      const relativePath = `templates/${tenantSlug}/videos/${outputFilename}`;
-      console.log('[Template Video] Video generation complete:', relativePath);
-      return { videoPath: relativePath, filename: outputFilename };
+      const relativePath = `creatives/${tenantSlug}/${outputFilename}`;
+      const hostDomain =
+        process.env.HOST_DOMAIN || 'https://airspot-backend.dba.ma';
+      const publicUrl = `${hostDomain}/api/v1/video-download/public/file/${encodeURIComponent(relativePath)}`;
+
+      console.log('[Template Video] Video generation complete:', outputPath);
+      console.log('[Template Video] Public URL:', publicUrl);
+      return { videoPath: relativePath, filename: outputFilename, publicUrl };
     } catch (error) {
       console.error('[Template Video] Error generating video:', error);
       if (

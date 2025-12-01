@@ -146,7 +146,7 @@ export class TemplateController {
     const template = await this.templateService.findOne(id);
 
     // Generate public URLs for the template files
-    const baseUrl = process.env.APP_URL || 'https://airspot-dev-api.fly.dev';
+    const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma';
     return {
       ...template,
       publicLinks: {

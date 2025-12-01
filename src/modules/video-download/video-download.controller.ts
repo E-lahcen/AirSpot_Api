@@ -52,7 +52,7 @@ export class VideoDownloadController {
 
     // If download was successful, add public URL
     if ('videoPath' in result) {
-      const baseUrl = process.env.APP_URL || 'https://airspot-dev-api.fly.dev';
+      const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma/';
       return {
         ...result,
         publicUrl: `${baseUrl}/api/v1/video-download/public/file/${encodeURIComponent(result.videoPath)}`,
@@ -96,7 +96,7 @@ export class VideoDownloadController {
         publicUrl: {
           type: 'string',
           example:
-            'https://airspot-dev-api.fly.dev/api/v1/video-download/public/file/creatives/test-test/3878d1f3-2e29-46ec-b924-1be2fd47bf84.mp4',
+            'https://airspot-backend.dba.ma//api/v1/video-download/public/file/creatives/test-test/3878d1f3-2e29-46ec-b924-1be2fd47bf84.mp4',
         },
       },
     },
@@ -122,7 +122,7 @@ export class VideoDownloadController {
 
     // If upload was successful, add public URL
     if ('videoPath' in result) {
-      const baseUrl = process.env.APP_URL || 'https://airspot-dev-api.fly.dev';
+      const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma/';
       return {
         ...result,
         publicUrl: `${baseUrl}/api/v1/video-download/public/file/${encodeURIComponent(result.videoPath)}`,
@@ -154,7 +154,7 @@ export class VideoDownloadController {
           publicUrl: {
             type: 'string',
             example:
-              'https://airspot-dev-api.fly.dev/api/v1/video-download/public/file/creatives/test-test/3878d1f3-2e29-46ec-b924-1be2fd47bf84.mp4',
+              'https://airspot-backend.dba.ma//api/v1/video-download/public/file/creatives/test-test/3878d1f3-2e29-46ec-b924-1be2fd47bf84.mp4',
           },
           size: { type: 'number', example: 5242880 },
           createdAt: { type: 'string', format: 'date-time' },
@@ -165,7 +165,7 @@ export class VideoDownloadController {
   })
   async findAll(@CurrentUser() user: AuthenticatedUser) {
     const videos = await this.videoDownloadService.findAll(undefined, user);
-    const baseUrl = process.env.APP_URL || 'https://airspot-dev-api.fly.dev';
+    const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma/';
 
     return videos.map((video) => ({
       ...video,
