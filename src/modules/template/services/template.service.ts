@@ -8,9 +8,12 @@ import { mkdir, writeFile, readFile, stat, unlink } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { spawn } from 'child_process';
+import * as https from 'https';
+import * as http from 'http';
 import { TenantService } from '@app/modules/tenant';
 import { TenantConnectionService } from '@app/modules/tenant/services/tenant-connection.service';
 import { AuthenticatedUser } from '@app/modules/auth/decorators';
+import { StorageService } from '@app/modules/storage/services/storage.service';
 import { CreateTemplateDto } from '../dto/create-template.dto';
 import { FilterTemplateDto } from '../dto/filter-template.dto';
 import { ImageType } from '../dto/upload-image.dto';
@@ -46,6 +49,7 @@ export class TemplateService {
   constructor(
     private readonly tenantService: TenantService,
     private readonly tenantConnection: TenantConnectionService,
+    private readonly storageService: StorageService,
   ) {}
 
   async uploadImage(
@@ -1820,6 +1824,435 @@ export class TemplateService {
           clearTimeout(timeoutId);
         }
         console.error(`[Template Video] FFmpeg spawn error: ${error.message}`);
+        reject(new Error(`FFmpeg not found: ${error.message}`));
+      });
+    });
+  }
+
+  /**
+   * Overlay a video on an image at specified coordinates and dimensions
+   */
+  async overlayVideoOnImage(
+    imageUrl: string,
+    videoUrl: string | null,
+    position_x: number,
+    position_y: number,
+    widthVideo: number,
+    heightVideo: number,
+    user: AuthenticatedUser,
+  ): Promise<{ videoPath: string | null; filename: string; minioUrl: string }> {
+    console.log(
+      `[Overlay Video] Starting overlay process: imageUrl=${imageUrl}, videoUrl=${videoUrl}`,
+    );
+
+    const tenantSlug = user.slug;
+    const tempDir = join(this.STORAGE_PATH, tenantSlug, 'temp');
+    const outputDir = join(this.STORAGE_PATH, tenantSlug, 'videos');
+
+    // Create directories
+    await mkdir(tempDir, { recursive: true });
+    await mkdir(outputDir, { recursive: true });
+
+    // Download image and video
+    const imageFilename = `${randomUUID()}.jpg`;
+    const videoFilename = `${randomUUID()}.mp4`;
+    const imagePath = join(tempDir, imageFilename);
+    const videoPath = join(tempDir, videoFilename);
+
+    try {
+      console.log('[Overlay Video] Downloading image...');
+      await this.downloadFile(imageUrl, imagePath);
+
+      // Generate output filename
+      const outputFilename = `${randomUUID()}.mp4`;
+      // Use tempDir for output instead of persistent volume
+      const outputPath = join(tempDir, outputFilename);
+
+      // If videoUrl is null, create a 10-second video from the image only
+      if (!videoUrl) {
+        console.log(
+          '[Overlay Video] No video provided, creating 10-second video from image...',
+        );
+        await this.createVideoFromImageOnly(imagePath, outputPath, 10);
+
+        // Clean up temporary input file
+        console.log('[Overlay Video] Cleaning up temporary input file...');
+        await unlink(imagePath).catch(() => {});
+      } else {
+        // Download and overlay video
+        console.log('[Overlay Video] Downloading video...');
+        await this.downloadFile(videoUrl, videoPath);
+
+        // Get video info to determine duration
+        console.log('[Overlay Video] Getting video info...');
+        const videoInfo = await this.getVideoInfo(videoPath);
+
+        // Create the overlay using FFmpeg
+        console.log('[Overlay Video] Creating overlay with FFmpeg...');
+        await this.createOverlayVideo(
+          imagePath,
+          videoPath,
+          outputPath,
+          position_x,
+          position_y,
+          widthVideo,
+          heightVideo,
+          videoInfo.duration,
+        );
+
+        // Clean up temporary input files
+        console.log('[Overlay Video] Cleaning up temporary input files...');
+        await unlink(imagePath).catch(() => {});
+        await unlink(videoPath).catch(() => {});
+      }
+
+      // Upload to MinIO
+      console.log('[Overlay Video] Uploading to MinIO...');
+      const fileBuffer = await readFile(outputPath);
+      const fileStat = await stat(outputPath);
+      const minioUrl = await this.storageService.uploadFile(
+        `templates/${tenantSlug}/videos/${outputFilename}`,
+        fileBuffer,
+        fileStat.size,
+        'video/mp4',
+      );
+      console.log(`[Overlay Video] Uploaded to MinIO: ${minioUrl}`);
+
+      // Clean up output file from temp dir
+      console.log('[Overlay Video] Cleaning up temporary output file...');
+      await unlink(outputPath).catch(() => {});
+
+      return {
+        videoPath: null, // No local file
+        filename: outputFilename,
+        minioUrl,
+      };
+    } catch (error) {
+      // Clean up on error
+      await unlink(imagePath).catch(() => {});
+      await unlink(videoPath).catch(() => {});
+
+      console.error('[Overlay Video] Error creating overlay:', error);
+      throw new BadRequestException(
+        `Failed to create overlay video: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Download a file from a URL
+   */
+  private async downloadFile(url: string, outputPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const protocol = url.startsWith('https') ? https : http;
+
+      protocol
+        .get(url, (response) => {
+          if (response.statusCode === 302 || response.statusCode === 301) {
+            // Handle redirects
+            const redirectUrl = response.headers.location;
+            if (redirectUrl) {
+              this.downloadFile(redirectUrl, outputPath)
+                .then(resolve)
+                .catch(reject);
+              return;
+            }
+          }
+
+          if (response.statusCode !== 200) {
+            reject(
+              new Error(`Failed to download file: HTTP ${response.statusCode}`),
+            );
+            return;
+          }
+
+          const chunks: Buffer[] = [];
+          response.on('data', (chunk) => chunks.push(chunk));
+          response.on('end', () => {
+            void (async () => {
+              try {
+                const buffer = Buffer.concat(chunks);
+                await writeFile(outputPath, buffer);
+                resolve();
+              } catch (error) {
+                const message =
+                  error &&
+                  typeof error === 'object' &&
+                  'message' in error &&
+                  typeof error.message === 'string'
+                    ? error.message
+                    : 'Unknown error';
+                reject(error instanceof Error ? error : new Error(message));
+              }
+            })().catch((error: unknown) => {
+              const message =
+                error &&
+                typeof error === 'object' &&
+                'message' in error &&
+                typeof error.message === 'string'
+                  ? error.message
+                  : 'Unknown error';
+              reject(error instanceof Error ? error : new Error(message));
+            });
+          });
+          response.on('error', (error: unknown) => {
+            const message =
+              error &&
+              typeof error === 'object' &&
+              'message' in error &&
+              typeof error.message === 'string'
+                ? error.message
+                : 'Unknown error';
+            reject(error instanceof Error ? error : new Error(message));
+          });
+        })
+        .on('error', (error: unknown) => {
+          const message =
+            error &&
+            typeof error === 'object' &&
+            'message' in error &&
+            typeof error.message === 'string'
+              ? error.message
+              : 'Unknown error';
+          reject(error instanceof Error ? error : new Error(message));
+        });
+    });
+  }
+
+  /**
+   * Create overlay video using FFmpeg
+   */
+  private async createOverlayVideo(
+    imagePath: string,
+    videoPath: string,
+    outputPath: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    duration: number,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Ensure dimensions are even (required by H.264 encoder)
+      const evenWidth = Math.floor(width / 2) * 2;
+      const evenHeight = Math.floor(height / 2) * 2;
+      const evenX = Math.floor(x / 2) * 2;
+      const evenY = Math.floor(y / 2) * 2;
+
+      // FFmpeg filter to overlay video on image
+      // 1. Scale background image to even dimensions first
+      // 2. Create a looping video from the scaled image
+      // 3. Scale the input video to exact requested dimensions (stretching if necessary)
+      // 4. Overlay the scaled video on the background
+      // 5. Ensure final output has even dimensions
+      const filterComplex = `[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2[bg_scaled];[bg_scaled]loop=loop=-1:size=1:start=0,fps=30[bg];[1:v]scale=${evenWidth}:${evenHeight}[overlay];[bg][overlay]overlay=${evenX}:${evenY}:shortest=1,scale=trunc(iw/2)*2:trunc(ih/2)*2[out]`;
+
+      const ffmpegArgs = [
+        '-loop',
+        '1',
+        '-i',
+        imagePath,
+        '-i',
+        videoPath,
+        '-filter_complex',
+        filterComplex,
+        '-map',
+        '[out]',
+        '-map',
+        '1:a?', // Map audio from video if available
+        '-t',
+        duration.toString(),
+        '-r',
+        '30',
+        '-pix_fmt',
+        'yuv420p',
+        '-c:v',
+        'libx264',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-preset',
+        'ultrafast',
+        '-crf',
+        '28',
+        '-threads',
+        '2',
+        '-movflags',
+        '+faststart',
+        '-y',
+        outputPath,
+      ];
+
+      console.log(
+        `[Overlay Video] FFmpeg command: ffmpeg ${ffmpegArgs.join(' ')}`,
+      );
+
+      const ffmpeg = spawn('ffmpeg', ffmpegArgs);
+
+      let stderr = '';
+      let lastProgressTime = Date.now();
+      const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes timeout
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      // Set timeout
+      timeoutId = setTimeout(() => {
+        console.error(
+          `[Overlay Video] FFmpeg timeout after ${TIMEOUT_MS}ms, killing process`,
+        );
+        if (ffmpeg.pid) {
+          try {
+            process.kill(ffmpeg.pid, 'SIGTERM');
+            setTimeout(() => {
+              if (ffmpeg.pid) {
+                process.kill(ffmpeg.pid, 'SIGKILL');
+              }
+            }, 5000);
+          } catch (error) {
+            console.error(
+              '[Overlay Video] Error killing ffmpeg process:',
+              error,
+            );
+          }
+        }
+        reject(
+          new Error(
+            `FFmpeg timeout after ${TIMEOUT_MS}ms. Last stderr: ${stderr.substring(stderr.length - 500)}`,
+          ),
+        );
+      }, TIMEOUT_MS);
+
+      ffmpeg.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        stderr += chunk;
+
+        // Log progress every 5 seconds
+        const now = Date.now();
+        if (now - lastProgressTime > 5000) {
+          const lines = chunk.split('\n').filter((l: string) => l.trim());
+          for (const line of lines) {
+            if (
+              line.includes('frame=') ||
+              line.includes('time=') ||
+              line.includes('bitrate=')
+            ) {
+              console.log(`[Overlay Video] FFmpeg progress: ${line.trim()}`);
+            }
+          }
+          lastProgressTime = now;
+        }
+      });
+
+      ffmpeg.on('close', (code, signal) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
+        if (code === 0) {
+          console.log(
+            `[Overlay Video] FFmpeg completed successfully. Output: ${outputPath}`,
+          );
+          resolve();
+        } else {
+          const errorMsg = `FFmpeg exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`;
+          const errorDetails = stderr.substring(stderr.length - 1000);
+          console.error(`[Overlay Video] ${errorMsg}. Stderr: ${errorDetails}`);
+          reject(new Error(`${errorMsg}. Details: ${errorDetails}`));
+        }
+      });
+
+      ffmpeg.on('error', (error) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        console.error(`[Overlay Video] FFmpeg spawn error: ${error.message}`);
+        reject(new Error(`FFmpeg not found: ${error.message}`));
+      });
+    });
+  }
+
+  /**
+   * Create a video from a static image with a specified duration
+   */
+  private async createVideoFromImageOnly(
+    imagePath: string,
+    outputPath: string,
+    duration: number,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const ffmpegArgs = [
+        '-loop',
+        '1',
+        '-i',
+        imagePath,
+        '-t',
+        duration.toString(),
+        '-vf',
+        'scale=trunc(iw/2)*2:trunc(ih/2)*2', // Ensure even dimensions
+        '-r',
+        '30',
+        '-pix_fmt',
+        'yuv420p',
+        '-c:v',
+        'libx264',
+        '-preset',
+        'ultrafast',
+        '-crf',
+        '28',
+        '-movflags',
+        '+faststart',
+        '-y',
+        outputPath,
+      ];
+
+      console.log(
+        `[Create Video From Image] FFmpeg command: ffmpeg ${ffmpegArgs.join(' ')}`,
+      );
+
+      const ffmpeg = spawn('ffmpeg', ffmpegArgs);
+      let stderr = '';
+
+      const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+      const timeoutId = setTimeout(() => {
+        ffmpeg.kill('SIGKILL');
+        reject(
+          new Error(
+            `FFmpeg timeout after ${TIMEOUT_MS}ms. Last stderr: ${stderr.substring(stderr.length - 500)}`,
+          ),
+        );
+      }, TIMEOUT_MS);
+
+      ffmpeg.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      ffmpeg.on('close', (code, signal) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
+        if (code === 0) {
+          console.log(
+            `[Create Video From Image] FFmpeg completed successfully. Output: ${outputPath}`,
+          );
+          resolve();
+        } else {
+          const errorMsg = `FFmpeg exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`;
+          const errorDetails = stderr.substring(stderr.length - 1000);
+          console.error(
+            `[Create Video From Image] ${errorMsg}. Stderr: ${errorDetails}`,
+          );
+          reject(new Error(`${errorMsg}. Details: ${errorDetails}`));
+        }
+      });
+
+      ffmpeg.on('error', (error) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        console.error(
+          `[Create Video From Image] FFmpeg spawn error: ${error.message}`,
+        );
         reject(new Error(`FFmpeg not found: ${error.message}`));
       });
     });

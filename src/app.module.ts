@@ -25,6 +25,7 @@ import { StoryboardModule } from './modules/storyboard/storyboard.module';
 import { OrganisationModule } from './modules/organisation/organisation.module';
 import { UserTenantModule } from './modules/user-tenant/user-tenant.module';
 import { InvitationModule } from './modules/invitation/invitation.module';
+import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { InvitationModule } from './modules/invitation/invitation.module';
     StoryboardModule,
     OrganisationModule,
     InvitationModule,
+    StorageModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

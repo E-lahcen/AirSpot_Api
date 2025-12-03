@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { ModuleRef, ContextIdFactory } from '@nestjs/core';
@@ -19,25 +20,27 @@ export class TenantConnectionCleanupInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
-      finalize(async () => {
-        try {
-          const request = context.switchToHttp().getRequest();
-          if (request) {
-            // Resolve the request-scoped service for the current context
-            const contextId = ContextIdFactory.getByRequest(request);
-            const tenantConnectionService = await this.moduleRef.resolve(
-              TenantConnectionService,
-              contextId,
-              { strict: false },
-            );
+      finalize(() => {
+        void (async () => {
+          try {
+            const request = context.switchToHttp().getRequest<Request>();
+            if (request) {
+              // Resolve the request-scoped service for the current context
+              const contextId = ContextIdFactory.getByRequest(request);
+              const tenantConnectionService = await this.moduleRef.resolve(
+                TenantConnectionService,
+                contextId,
+                { strict: false },
+              );
 
-            if (tenantConnectionService) {
-              await tenantConnectionService.cleanup();
+              if (tenantConnectionService) {
+                await tenantConnectionService.cleanup();
+              }
             }
+          } catch {
+            // Silently fail if service cannot be resolved (e.g. non-HTTP context)
           }
-        } catch (error) {
-          // Silently fail if service cannot be resolved (e.g. non-HTTP context)
-        }
+        })();
       }),
     );
   }

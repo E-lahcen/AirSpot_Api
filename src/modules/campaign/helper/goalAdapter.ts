@@ -7,8 +7,8 @@ export const ALLOWED_GOALS = [
 ];
 
 export function levenshtein(a: string, b: string): number {
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
-    new Array(b.length + 1).fill(0),
+  const dp: number[][] = Array.from({ length: a.length + 1 }, (): number[] =>
+    new Array<number>(b.length + 1).fill(0),
   );
   for (let i = 0; i <= a.length; i++) dp[i][0] = i;
   for (let j = 0; j <= b.length; j++) dp[0][j] = j;
@@ -24,4 +24,3 @@ export function levenshtein(a: string, b: string): number {
   }
   return dp[a.length][b.length];
 }
-

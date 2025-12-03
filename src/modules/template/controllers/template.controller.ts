@@ -26,7 +26,12 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { TemplateService } from '../services/template.service';
-import { CreateTemplateDto, ImageType, FilterTemplateDto } from '../dto';
+import {
+  CreateTemplateDto,
+  ImageType,
+  FilterTemplateDto,
+  OverlayVideoDto,
+} from '../dto';
 import { AuthGuard } from '@app/modules/auth/guards';
 import {
   CurrentUser,
@@ -184,10 +189,6 @@ export class TemplateController {
     },
   })
   @ApiResponse({
-    status: 400,
-    description: 'Bad request - Template video path is required',
-  })
-  @ApiResponse({
     status: 404,
     description: 'Template not found or input video not found',
   })
@@ -200,6 +201,96 @@ export class TemplateController {
     return {
       ...result,
       publicUrl: `${baseUrl}/api/v1/video-download/public/file/${encodeURIComponent(result.videoPath)}`,
+    };
+  }
+
+  @Post('overlay-video')
+  @ApiOperation({
+    summary: 'Overlay a video on an image at specified coordinates',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'string',
+          example: 'https://airspot-minio-api.dba.ma/canvas/canvas-123.jpg',
+        },
+        canvas_dimensions: {
+          type: 'object',
+          nullable: true,
+          example: null,
+        },
+        video: {
+          type: 'string',
+          nullable: true,
+          example: 'https://airspot-minio-api.dba.ma/canvas/canvas-456.mp4',
+        },
+        video_dimensions: {
+          type: 'object',
+          nullable: true,
+          properties: {
+            id: { type: 'string', example: 'video_main' },
+            x: { type: 'number', example: 653 },
+            y: { type: 'number', example: 244 },
+            width: { type: 'number', example: 1189 },
+            height: { type: 'number', example: 720 },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Video overlay created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        videoPath: {
+          type: 'string',
+          nullable: true,
+          example: null,
+        },
+        filename: {
+          type: 'string',
+          example: 'abc123.mp4',
+        },
+        publicUrl: {
+          type: 'string',
+          example:
+            'https://airspot-backend.dba.ma/api/v1/video-download/public/file/templates%2Ftest-test%2Fvideos%2Fabc123.mp4',
+        },
+        minioUrl: {
+          type: 'string',
+          example:
+            'http://localhost:9000/airspot-videos/templates/test-test/videos/abc123.mp4',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - Invalid parameters or processing failed',
+  })
+  async overlayVideo(
+    @Body() overlayVideoDto: OverlayVideoDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const result = await this.templateService.overlayVideoOnImage(
+      overlayVideoDto.image,
+      overlayVideoDto.video || null,
+      overlayVideoDto.video_dimensions?.x || 0,
+      overlayVideoDto.video_dimensions?.y || 0,
+      overlayVideoDto.video_dimensions?.width || 0,
+      overlayVideoDto.video_dimensions?.height || 0,
+      user,
+    );
+    const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma';
+    return {
+      ...result,
+      publicUrl: result.videoPath
+        ? `${baseUrl}/api/v1/video-download/public/file/${encodeURIComponent(result.videoPath)}`
+        : result.minioUrl,
     };
   }
 }
