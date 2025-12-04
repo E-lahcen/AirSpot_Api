@@ -1841,9 +1841,20 @@ export class TemplateService {
     heightVideo: number,
     user: AuthenticatedUser,
   ): Promise<{ videoPath: string | null; filename: string; minioUrl: string }> {
-    console.log(
-      `[Overlay Video] Starting overlay process: imageUrl=${imageUrl}, videoUrl=${videoUrl}`,
-    );
+    console.log(`[Overlay Video] Starting overlay process:`);
+    console.log(`[Overlay Video] - Image URL: ${imageUrl}`);
+    console.log(`[Overlay Video] - Video URL: ${videoUrl}`);
+    console.log(`[Overlay Video] - Position: (${position_x}, ${position_y})`);
+    console.log(`[Overlay Video] - Dimensions: ${widthVideo}x${heightVideo}`);
+    console.log(`[Overlay Video] - Tenant: ${user.slug}`);
+
+    // Validate URLs
+    if (!imageUrl || !imageUrl.startsWith('http')) {
+      throw new BadRequestException(`Invalid image URL: ${imageUrl}`);
+    }
+    if (videoUrl && !videoUrl.startsWith('http')) {
+      throw new BadRequestException(`Invalid video URL: ${videoUrl}`);
+    }
 
     const tenantSlug = user.slug;
     const tempDir = join(this.STORAGE_PATH, tenantSlug, 'temp');
@@ -1940,18 +1951,29 @@ export class TemplateService {
   }
 
   /**
-   * Download a file from a URL
+   * Download a file from a URL with improved error handling and timeout
    */
   private async downloadFile(url: string, outputPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const protocol = url.startsWith('https') ? https : http;
+      console.log(`[Download] Starting download from: ${url}`);
 
-      protocol
-        .get(url, (response) => {
+      const protocol = url.startsWith('https') ? https : http;
+      const timeout = 60000; // 60 seconds timeout
+
+      const request = protocol.get(
+        url,
+        {
+          timeout: timeout,
+          headers: {
+            'User-Agent': 'AirSpot-API/1.0',
+          },
+        },
+        (response) => {
+          // Handle redirects
           if (response.statusCode === 302 || response.statusCode === 301) {
-            // Handle redirects
             const redirectUrl = response.headers.location;
             if (redirectUrl) {
+              console.log(`[Download] Following redirect to: ${redirectUrl}`);
               this.downloadFile(redirectUrl, outputPath)
                 .then(resolve)
                 .catch(reject);
@@ -1960,62 +1982,74 @@ export class TemplateService {
           }
 
           if (response.statusCode !== 200) {
-            reject(
-              new Error(`Failed to download file: HTTP ${response.statusCode}`),
+            const error = new Error(
+              `Failed to download file from ${url}: HTTP ${response.statusCode}`,
             );
+            console.error(`[Download] ${error.message}`);
+            reject(error);
             return;
           }
 
+          console.log(
+            `[Download] Receiving data... (Content-Length: ${response.headers['content-length'] || 'unknown'})`,
+          );
+
           const chunks: Buffer[] = [];
-          response.on('data', (chunk) => chunks.push(chunk));
+
+          response.on('data', (chunk) => {
+            chunks.push(chunk);
+          });
+
           response.on('end', () => {
             void (async () => {
               try {
                 const buffer = Buffer.concat(chunks);
+                console.log(
+                  `[Download] Download complete. Size: ${buffer.length} bytes. Writing to: ${outputPath}`,
+                );
                 await writeFile(outputPath, buffer);
+                console.log(`[Download] File written successfully`);
                 resolve();
               } catch (error) {
-                const message =
-                  error &&
-                  typeof error === 'object' &&
-                  'message' in error &&
-                  typeof error.message === 'string'
-                    ? error.message
-                    : 'Unknown error';
-                reject(error instanceof Error ? error : new Error(message));
+                const err =
+                  error instanceof Error ? error : new Error(String(error));
+                console.error(`[Download] Error writing file: ${err.message}`);
+                reject(err);
               }
-            })().catch((error: unknown) => {
-              const message =
-                error &&
-                typeof error === 'object' &&
-                'message' in error &&
-                typeof error.message === 'string'
-                  ? error.message
-                  : 'Unknown error';
-              reject(error instanceof Error ? error : new Error(message));
-            });
+            })();
           });
-          response.on('error', (error: unknown) => {
-            const message =
-              error &&
-              typeof error === 'object' &&
-              'message' in error &&
-              typeof error.message === 'string'
-                ? error.message
-                : 'Unknown error';
-            reject(error instanceof Error ? error : new Error(message));
+
+          response.on('error', (error) => {
+            console.error(`[Download] Response error: ${error.message}`);
+            reject(error);
           });
-        })
-        .on('error', (error: unknown) => {
-          const message =
-            error &&
-            typeof error === 'object' &&
-            'message' in error &&
-            typeof error.message === 'string'
-              ? error.message
-              : 'Unknown error';
-          reject(error instanceof Error ? error : new Error(message));
-        });
+        },
+      );
+
+      request.on('error', (error) => {
+        console.error(`[Download] Request error for ${url}: ${error.message}`);
+        console.error(`[Download] Error details:`, error);
+        reject(
+          new Error(`Failed to download file from ${url}: ${error.message}`),
+        );
+      });
+
+      request.on('timeout', () => {
+        console.error(
+          `[Download] Request timeout after ${timeout}ms for ${url}`,
+        );
+        request.destroy();
+        reject(new Error(`Download timeout after ${timeout}ms for ${url}`));
+      });
+
+      // Set socket timeout
+      request.setTimeout(timeout, () => {
+        console.error(
+          `[Download] Socket timeout after ${timeout}ms for ${url}`,
+        );
+        request.destroy();
+        reject(new Error(`Socket timeout after ${timeout}ms for ${url}`));
+      });
     });
   }
 

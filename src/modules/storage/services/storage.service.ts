@@ -17,6 +17,7 @@ export class StorageService implements OnModuleInit {
 
     this.minioClient = new Minio.Client({
       endPoint: this.configService.get<string>('MINIO_ENDPOINT', 'localhost'),
+      // port: parseInt(this.configService.get<string>('MINIO_PORT', '9000')),
       useSSL:
         this.configService.get<string>('MINIO_USE_SSL', 'false') === 'true',
       accessKey: this.configService.get<string>(
@@ -42,9 +43,11 @@ export class StorageService implements OnModuleInit {
         this.logger.log(`Bucket '${this.bucketName}' created successfully.`);
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      const stack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error ensuring bucket exists: ${message}`, stack);
+      const err = error as Error;
+      this.logger.error(
+        `Error ensuring bucket exists: ${err.message}`,
+        err.stack,
+      );
     }
   }
 
@@ -82,9 +85,11 @@ export class StorageService implements OnModuleInit {
 
       return `${protocol}://${endpoint}/${this.bucketName}/${filename}`;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      const stack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error uploading file to MinIO: ${message}`, stack);
+      const err = error as Error;
+      this.logger.error(
+        `Error uploading file to MinIO: ${err.message}`,
+        err.stack,
+      );
       throw error;
     }
   }
