@@ -5,7 +5,7 @@ services:
       dockerfile: docker/Dockerfile.prod
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - '3001:3000'
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: ${PORT}
@@ -27,6 +27,13 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       AUTO_SETUP_MULTITENANCY: ${AUTO_SETUP_MULTITENANCY}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_PORT: ${MINIO_PORT}
+      MINIO_USE_SSL: ${MINIO_USE_SSL}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
 
     develop:
       watch:
@@ -55,7 +62,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6378:6379"
+      - '6378:6379'
     networks:
       - shared
 
@@ -66,7 +73,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL-admin@postgres.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD-admin}
     ports:
-      - "5050:80"
+      - '5050:80'
     networks:
       - shared
 
