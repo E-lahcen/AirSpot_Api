@@ -17,7 +17,7 @@ export class StorageService implements OnModuleInit {
 
     this.minioClient = new Minio.Client({
       endPoint: this.configService.get<string>('MINIO_ENDPOINT', 'localhost'),
-      // port: parseInt(this.configService.get<string>('MINIO_PORT', '9000')),
+      port: parseInt(this.configService.get<string>('MINIO_PORT', '9000'), 10),
       useSSL:
         this.configService.get<string>('MINIO_USE_SSL', 'false') === 'true',
       accessKey: this.configService.get<string>(
