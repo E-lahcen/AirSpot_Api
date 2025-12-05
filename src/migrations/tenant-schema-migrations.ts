@@ -629,4 +629,18 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       );
     },
   },
+  {
+    version: 1764930787227,
+    name: 'AddImageHistoryToStoryBoard',
+    up: async (queryRunner: QueryRunner): Promise<void> => {
+      await queryRunner.query(
+        `ALTER TABLE "storyboards" ADD "imageHistory" text array`,
+      );
+    },
+    down: async (queryRunner: QueryRunner): Promise<void> => {
+      await queryRunner.query(
+        `ALTER TABLE "storyboards" DROP COLUMN "imageHistory"`,
+      );
+    },
+  },
 ];

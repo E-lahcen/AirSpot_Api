@@ -50,6 +50,19 @@ export class SceneDto {
   @IsString()
   @IsOptional()
   imageStyle?: string;
+
+  @ApiPropertyOptional({
+    description: 'Array of image URLs in the history for this scene',
+    type: [String],
+    example: [
+      'https://example.com/image1.jpg',
+      'https://example.com/image2.jpg',
+    ],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  imageHistory?: string[];
 }
 
 export class CreateStoryboardDto {
@@ -94,4 +107,17 @@ export class CreateStoryboardDto {
   @ApiProperty({ description: 'URL of the final generated video' })
   @IsString()
   videoUrl: string;
+
+  @ApiPropertyOptional({
+    description: 'Array of image URLs in the history',
+    type: [String],
+    example: [
+      'https://example.com/image1.jpg',
+      'https://example.com/image2.jpg',
+    ],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  imageHistory?: string[];
 }

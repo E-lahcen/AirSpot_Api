@@ -2,8 +2,8 @@ services:
   api:
     build:
       context: .
-      dockerfile: docker/Dockerfile.local
-      # dockerfile: docker/Dockerfile.prod
+      # dockerfile: docker/Dockerfile.local
+      dockerfile: docker/Dockerfile.prod
     restart: unless-stopped
     env_file:
       - path: .env

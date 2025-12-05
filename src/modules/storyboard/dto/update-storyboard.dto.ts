@@ -41,4 +41,17 @@ export class UpdateStoryboardDto extends PartialType(CreateStoryboardDto) {
   @IsDateString()
   @IsOptional()
   createdAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Array of image URLs in the history',
+    type: [String],
+    example: [
+      'https://example.com/image1.jpg',
+      'https://example.com/image2.jpg',
+    ],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  imageHistory?: string[];
 }

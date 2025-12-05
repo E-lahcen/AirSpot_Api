@@ -22,6 +22,9 @@ export class Storyboard extends BaseEntity {
   @Column({ type: 'varchar', length: 500 })
   video_url: string;
 
+  @Column('text', { array: true, nullable: true })
+  imageHistory: string[] | null;
+
   @Column({ type: 'uuid' })
   owner_id: string;
 
