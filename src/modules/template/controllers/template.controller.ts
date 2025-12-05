@@ -265,6 +265,11 @@ export class TemplateController {
           example:
             'http://localhost:9000/airspot-videos/templates/test-test/videos/abc123.mp4',
         },
+        creativeId: {
+          type: 'string',
+          example: '123e4567-e89b-12d3-a456-426614174000',
+          description: 'ID of the automatically created creative',
+        },
       },
     },
   })

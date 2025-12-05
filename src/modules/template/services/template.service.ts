@@ -18,6 +18,7 @@ import { CreateTemplateDto } from '../dto/create-template.dto';
 import { FilterTemplateDto } from '../dto/filter-template.dto';
 import { ImageType } from '../dto/upload-image.dto';
 import { Template } from '../entities/template.entity';
+import { Creative } from '@app/modules/creative/entities/creative.entity';
 import { paginate, Pagination } from 'nestjs-typeorm-paginate';
 import { FindOptionsWhere, Like } from 'typeorm';
 
@@ -1840,7 +1841,12 @@ export class TemplateService {
     widthVideo: number,
     heightVideo: number,
     user: AuthenticatedUser,
-  ): Promise<{ videoPath: string | null; filename: string; minioUrl: string }> {
+  ): Promise<{
+    videoPath: string | null;
+    filename: string;
+    minioUrl: string;
+    creativeId: string;
+  }> {
     console.log(`[Overlay Video] Starting overlay process:`);
     console.log(`[Overlay Video] - Image URL: ${imageUrl}`);
     console.log(`[Overlay Video] - Video URL: ${videoUrl}`);
@@ -1929,6 +1935,34 @@ export class TemplateService {
       );
       console.log(`[Overlay Video] Uploaded to MinIO: ${minioUrl}`);
 
+      // Create Creative entity
+      console.log('[Overlay Video] Creating Creative entity...');
+      const creativeRepository =
+        await this.tenantConnection.getRepository(Creative);
+
+      const creative = creativeRepository.create({
+        organization_id: user.tenantId,
+        owner_id: user.id,
+        name: `Canvas Video ${new Date().toISOString()}`,
+        description: 'Generated from canvas editor',
+        orientation: 'vertical',
+        video_position: 'left',
+        brand_name: '',
+        product_name: '',
+        price: '',
+        theme: 'custom',
+        features: [],
+        show_qr_code: false,
+        video_path: minioUrl,
+        file_name: outputFilename,
+        campaign_count: 0,
+      });
+
+      const savedCreative = await creativeRepository.save(creative);
+      console.log(
+        `[Overlay Video] Creative created with ID: ${savedCreative.id}`,
+      );
+
       // Clean up output file from temp dir
       console.log('[Overlay Video] Cleaning up temporary output file...');
       await unlink(outputPath).catch(() => {});
@@ -1937,6 +1971,7 @@ export class TemplateService {
         videoPath: null, // No local file
         filename: outputFilename,
         minioUrl,
+        creativeId: savedCreative.id,
       };
     } catch (error) {
       // Clean up on error
