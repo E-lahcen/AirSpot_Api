@@ -60,4 +60,8 @@ export class OrganisationService {
   async findAllOrganizations() {
     return this.tenantManagementService.getAllTenants();
   }
+
+  async findOrganizationsByOwner(userId: string) {
+    return this.tenantManagementService.getTenantsByOwner(userId);
+  }
 }

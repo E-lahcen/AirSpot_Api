@@ -1,11 +1,11 @@
-import { ConflictException, Injectable, Logger } from "@nestjs/common";
-import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
-import { Tenant } from "../entities/tenant.entity";
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { Tenant } from '../entities/tenant.entity';
 import {
   TENANT_MIGRATIONS,
   TenantMigrationHelpers,
-} from "@app/migrations/tenant-schema-migrations";
+} from '@app/migrations/tenant-schema-migrations';
 
 export interface CreateTenantData {
   companyName: string;
@@ -47,7 +47,7 @@ export class TenantManagementService {
     const slug = await this.resolveSlug(data);
 
     // Generate schema name (sanitized for PostgreSQL - no hyphens)
-    const schemaName = `tenant_${slug.replace(/-/g, "_")}`;
+    const schemaName = `tenant_${slug.replace(/-/g, '_')}`;
 
     this.logger.log(`Creating tenant: (${slug}) for ${data.companyName}`);
 
@@ -59,10 +59,10 @@ export class TenantManagementService {
     if (existingTenant) {
       if (data.slug) {
         throw new ConflictException({
-          message: "Slug already exists",
+          message: 'Slug already exists',
           errors: [
             {
-              code: "TENANT_SLUG_EXISTS",
+              code: 'TENANT_SLUG_EXISTS',
               message: `Slug ${slug} is already in use`,
             },
           ],
@@ -155,7 +155,14 @@ export class TenantManagementService {
   }
 
   async getAllTenants(): Promise<Tenant[]> {
-    return this.tenantRepository.find({ order: { created_at: "DESC" } });
+    return this.tenantRepository.find({ order: { created_at: 'DESC' } });
+  }
+
+  async getTenantsByOwner(userId: string): Promise<Tenant[]> {
+    return this.tenantRepository.find({
+      where: { owner_id: userId },
+      order: { created_at: 'DESC' },
+    });
   }
 
   async deactivateTenant(slug: string): Promise<void> {
@@ -168,7 +175,7 @@ export class TenantManagementService {
    */
   private async createTenantTables(slug: string): Promise<void> {
     // Sanitize slug for schema name (replace hyphens with underscores)
-    const schema = `tenant_${slug.replace(/-/g, "_")}`;
+    const schema = `tenant_${slug.replace(/-/g, '_')}`;
 
     this.logger.log(`Creating tables in schema: ${schema}`);
 
@@ -224,8 +231,8 @@ export class TenantManagementService {
     // Convert to lowercase, remove special chars, replace spaces with underscores
     const sanitized = companyName
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "")
-      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
       .substring(0, 50); // Limit length
 
     // Add timestamp to ensure uniqueness
@@ -241,10 +248,10 @@ export class TenantManagementService {
     return companyName
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9\s-]/g, "") // Remove special chars except spaces and hyphens
-      .replace(/\s+/g, "-") // Replace spaces with hyphens
-      .replace(/-+/g, "-") // Replace multiple hyphens with single
-      .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special chars except spaces and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
   }
 
   /**
@@ -277,12 +284,12 @@ export class TenantManagementService {
       const sanitized = this.generateSlug(data.slug);
       if (!sanitized) {
         throw new ConflictException({
-          message: "Invalid slug",
+          message: 'Invalid slug',
           errors: [
             {
-              code: "INVALID_SLUG",
+              code: 'INVALID_SLUG',
               message:
-                "Provided slug is invalid. Use only letters, numbers, and hyphens.",
+                'Provided slug is invalid. Use only letters, numbers, and hyphens.',
             },
           ],
         });
@@ -290,10 +297,10 @@ export class TenantManagementService {
 
       if (await this.slugExists(sanitized)) {
         throw new ConflictException({
-          message: "Slug already exists",
+          message: 'Slug already exists',
           errors: [
             {
-              code: "TENANT_SLUG_EXISTS",
+              code: 'TENANT_SLUG_EXISTS',
               message: `Slug ${sanitized} is already in use`,
             },
           ],

@@ -1,5 +1,13 @@
 import { Roles } from '@app/modules/auth/decorators/roles.decorator';
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { AuthenticatedUser, CurrentUser } from '@app/modules/auth/decorators';
@@ -31,9 +39,23 @@ export class OrganisationController {
     status: 200,
     description: 'List of organizations retrieved successfully',
   })
-  @Roles('owner', 'admin', 'user')
+  @Roles('owner', 'admin')
   async getAllOrganizations() {
     console.log('Fetching all organizations');
     return this.organisationService.findAllOrganizations();
+  }
+
+  @Get('by-owner/:userId')
+  @ApiOperation({ summary: 'Get organizations by owner' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of organizations for the owner retrieved successfully',
+  })
+  @Roles('owner', 'admin')
+  async getOrganizationsByOwner(
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ) {
+    console.log(`Fetching organizations for owner: ${userId}`);
+    return this.organisationService.findOrganizationsByOwner(userId);
   }
 }
