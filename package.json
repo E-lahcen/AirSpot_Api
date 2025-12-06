@@ -33,6 +33,8 @@
     "migrate:prod:simple": "./scripts/migrate-simple.sh",
     "migrate:prod:generate": "./scripts/generate-migration-prod.sh",
     "migrate:prod:all": "./scripts/migrate-all-schemas.sh",
+    "migrate:prod:revert": "./scripts/revert-migration-prod.sh",
+    "migrate:prod:revert-all": "./scripts/revert-all-schemas.sh",
     "migrate:debug": "docker compose -f docker-compose.migration-debug.yml up -d",
     "migrate:debug:down": "docker compose -f docker-compose.migration-debug.yml down -v",
     "tenant:migrate": "ts-node -r tsconfig-paths/register src/scripts/run-tenant-migrations.ts",

@@ -3,7 +3,8 @@
 # This script runs public schema migrations on ALL schemas (public + tenants)
 # No need for tenant-schema-migrations.ts - migrations are applied directly
 
-set -e
+# Don't exit on error - we want to process all tenants even if one fails
+set +e
 
 echo "=========================================="
 echo "  Multi-Tenant Production Migration"
@@ -152,6 +153,7 @@ async function applyMigrationsToTenantSchemas() {
 
       let appliedCount = 0;
       let skippedCount = 0;
+      let failedCount = 0;
 
       // Tables that belong ONLY to public schema (not tenant schemas)
       const publicOnlyTables = [
@@ -225,16 +227,25 @@ async function applyMigrationsToTenantSchemas() {
           } catch (error) {
             console.log('  ✗ Failed: ' + name);
             console.log('    Error: ' + error.message);
+            failedCount++;
             // Continue with next migration
           } finally {
             await queryRunner.release();
           }
         } catch (error) {
           console.log('  ⚠️  Could not load migration: ' + file);
+          console.log('    Error: ' + error.message);
+          failedCount++;
         }
       }
 
-      console.log('\\n  Summary: ' + appliedCount + ' applied, ' + skippedCount + ' already applied');
+      const totalProcessed = appliedCount + skippedCount + failedCount;
+      console.log('\\n  Summary:');
+      console.log('    ✓ Applied: ' + appliedCount);
+      console.log('    ⊘ Already applied: ' + skippedCount);
+      if (failedCount > 0) {
+        console.log('    ✗ Failed: ' + failedCount);
+      }
     }
 
     console.log('\\n\\n✅ All tenant schemas processed!');
