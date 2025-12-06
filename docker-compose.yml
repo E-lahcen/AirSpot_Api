@@ -55,6 +55,7 @@ services:
       - shared
     volumes:
       - downloads:/data:rw
+      - migrations:/app/dist/src/migrations:rw
 
   redis:
     image: redis:alpine
@@ -81,5 +82,6 @@ volumes:
   # postgres_data:
   redis_data:
   downloads:
+  migrations:
 networks:
   shared:
