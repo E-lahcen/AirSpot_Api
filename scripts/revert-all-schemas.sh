@@ -22,19 +22,7 @@ echo "Database Name: $DB_NAME"
 echo "Database User: $DB_USERNAME"
 echo ""
 
-echo "⚠️  WARNING: This will revert the LAST migration from:"
-echo "  - Public schema"
-echo "  - ALL tenant schemas"
-echo ""
-
-# Prompt for confirmation
-read -p "Are you sure you want to revert? (yes/no): " CONFIRM
-if [ "$CONFIRM" != "yes" ]; then
-    echo "Revert cancelled"
-    exit 0
-fi
-
-# Determine the correct data-source path
+# Determine the correct data-source path first
 # Check if we're in production or development
 if [ "$NODE_ENV" = "production" ] && [ -f "/app/dist/src/config/data-source.js" ]; then
     DATA_SOURCE_PATH="/app/dist/src/config/data-source.js"
@@ -52,6 +40,95 @@ else
     TYPEORM_CLI="npx ts-node ./node_modules/typeorm/cli.js"
     NODE_CMD="npx ts-node"
     MIGRATIONS_DIR="src/migrations"
+fi
+
+echo "=========================================="
+echo "  Current Migration Status"
+echo "=========================================="
+echo ""
+
+# Show public schema migrations
+echo "📋 Public Schema - Last Migration:"
+echo "─────────────────────────────────────────"
+$TYPEORM_CLI migration:show -d $DATA_SOURCE_PATH 2>/dev/null | tail -n 5 || echo "  Could not fetch public schema migrations"
+echo ""
+
+# Create a Node.js script to show tenant migrations
+cat > /tmp/show-tenant-migrations.js << 'SHOW_EOF'
+const { DataSource } = require('typeorm');
+
+async function showTenantMigrations() {
+  const dataSource = new DataSource({
+    type: 'postgres',
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+  });
+
+  await dataSource.initialize();
+
+  try {
+    const result = await dataSource.query(`
+      SELECT schema_name 
+      FROM tenants 
+      WHERE is_active = true 
+      ORDER BY created_at
+    `);
+
+    const tenantSchemas = result.map(row => row.schema_name);
+    
+    console.log('📋 Tenant Schemas - Last Migrations:');
+    console.log('─────────────────────────────────────────\n');
+
+    for (const schema of tenantSchemas) {
+      try {
+        const lastMigration = await dataSource.query(`
+          SELECT * FROM "${schema}".migrations 
+          ORDER BY id DESC 
+          LIMIT 1
+        `);
+
+        if (lastMigration.length === 0) {
+          console.log(`  ${schema}: No migrations`);
+        } else {
+          console.log(`  ${schema}:`);
+          console.log(`    └─ ${lastMigration[0].name}`);
+        }
+      } catch (error) {
+        console.log(`  ${schema}: Error - ${error.message}`);
+      }
+    }
+    console.log('');
+
+  } finally {
+    await dataSource.destroy();
+  }
+}
+
+showTenantMigrations()
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error('Error:', error.message);
+    process.exit(1);
+  });
+SHOW_EOF
+
+NODE_PATH="/app/node_modules" MIGRATIONS_DIR="$MIGRATIONS_DIR" $NODE_CMD /tmp/show-tenant-migrations.js
+rm /tmp/show-tenant-migrations.js
+
+echo ""
+echo "⚠️  WARNING: This will revert the LAST migration from:"
+echo "  - Public schema"
+echo "  - ALL tenant schemas shown above"
+echo ""
+
+# Prompt for confirmation
+read -p "Are you sure you want to revert? (yes/no): " CONFIRM
+if [ "$CONFIRM" != "yes" ]; then
+    echo "Revert cancelled"
+    exit 0
 fi
 
 echo ""
