@@ -62,11 +62,11 @@ echo "Data Source: $DATA_SOURCE_PATH"
 echo "Migration Directory: $MIGRATION_DIR"
 echo ""
 
-# Generate timestamp
-TIMESTAMP=$(date +%s)
-MIGRATION_FILE="${TIMESTAMP}-${MIGRATION_NAME}"
+# TypeORM automatically adds timestamp to the migration filename
+MIGRATION_FILE="$MIGRATION_NAME"
 
 echo "Generating migration: $MIGRATION_FILE"
+echo "Note: TypeORM will automatically prefix with timestamp"
 echo ""
 
 # Generate migration
