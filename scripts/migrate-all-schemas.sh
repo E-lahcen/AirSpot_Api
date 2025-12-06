@@ -178,8 +178,18 @@ async function applyMigrationsToTenantSchemas() {
         try {
           // Load and execute migration
           const migrationPath = path.join(migrationsDir, file);
-          const MigrationClass = require(migrationPath);
-          const migration = new MigrationClass[Object.keys(MigrationClass)[0]]();
+          const MigrationModule = require(migrationPath);
+          
+          // Get the migration class from the module (handle different export patterns)
+          const MigrationClass = MigrationModule.default || MigrationModule[Object.keys(MigrationModule)[0]];
+          
+          if (!MigrationClass || typeof MigrationClass !== 'function') {
+            console.log('  ⚠️  Could not find migration class in: ' + file);
+            failedCount++;
+            continue;
+          }
+
+          const migration = new MigrationClass();
 
           // Create a query runner for the tenant schema
           const queryRunner = dataSource.createQueryRunner();
@@ -189,11 +199,12 @@ async function applyMigrationsToTenantSchemas() {
           await queryRunner.query(`SET search_path TO "${schema}"`);
 
           try {
-            // Intercept queries to filter out public-only tables
+            // Intercept queries to filter out public-only tables and handle CREATE IF NOT EXISTS
             const originalQuery = queryRunner.query.bind(queryRunner);
             let hasPublicOnlyTable = false;
+            let queriesExecuted = 0;
 
-            queryRunner.query = function(query, parameters) {
+            queryRunner.query = async function(query, parameters) {
               // Check if query references public-only tables
               const queryLower = query.toLowerCase();
               for (const table of publicOnlyTables) {
@@ -207,18 +218,66 @@ async function applyMigrationsToTenantSchemas() {
                   return Promise.resolve();
                 }
               }
-              return originalQuery(query, parameters);
+              
+              // Handle CREATE TABLE - add IF NOT EXISTS to avoid errors
+              if (queryLower.includes('create table') && !queryLower.includes('if not exists')) {
+                // Extract table name and add IF NOT EXISTS
+                const createMatch = query.match(/CREATE TABLE "([^"]+)"/i);
+                if (createMatch) {
+                  const tableName = createMatch[1];
+                  query = query.replace(/CREATE TABLE "([^"]+)"/, 'CREATE TABLE IF NOT EXISTS "$1"');
+                }
+              }
+              
+              // Handle CREATE TYPE - check if exists first
+              if (queryLower.includes('create type')) {
+                const typeMatch = query.match(/CREATE TYPE "([^"]+)"\.?"([^"]+)"/i);
+                if (typeMatch) {
+                  const schemaName = typeMatch[1];
+                  const typeName = typeMatch[2] || typeMatch[1];
+                  
+                  // Check if type exists
+                  try {
+                    const typeExists = await originalQuery(
+                      'SELECT 1 FROM pg_type WHERE typname = $1',
+                      [typeName]
+                    );
+                    if (typeExists && typeExists.length > 0) {
+                      console.log('    ⊘ Type already exists: ' + typeName);
+                      return Promise.resolve();
+                    }
+                  } catch (e) {
+                    // Ignore check errors
+                  }
+                }
+              }
+              
+              try {
+                const result = await originalQuery(query, parameters);
+                queriesExecuted++;
+                return result;
+              } catch (error) {
+                // Ignore "already exists" errors
+                if (error.message && (
+                    error.message.includes('already exists') ||
+                    error.message.includes('duplicate key')
+                )) {
+                  console.log('    ⊘ Already exists, skipping: ' + error.message.split(':')[0]);
+                  return Promise.resolve();
+                }
+                throw error;
+              }
             };
 
             await migration.up(queryRunner);
             
-            // Record migration only if it had tenant-specific changes
-            if (!hasPublicOnlyTable) {
+            // Record migration if any queries were executed
+            if (queriesExecuted > 0 || !hasPublicOnlyTable) {
               await dataSource.query(
                 'INSERT INTO "' + schema + '".migrations (timestamp, name) VALUES ($1, $2)',
                 [timestamp, className]
               );
-              console.log('  ✓ Applied: ' + name);
+              console.log('  ✓ Applied: ' + name + ' (' + queriesExecuted + ' queries)');
               appliedCount++;
             } else {
               console.log('  ⊘ Skipped (public-only): ' + name);
