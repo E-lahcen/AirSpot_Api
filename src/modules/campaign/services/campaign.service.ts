@@ -20,24 +20,36 @@ export class CampaignService {
     organization_id: string,
   ): Promise<Campaign> {
     // normalize the incoming selectedGoal robustly here to guarantee DB-safe enum
-    createCampaignDto.selectedGoal = this.mapSelectedGoal(createCampaignDto.selectedGoal);
+    createCampaignDto.selectedGoal = this.mapSelectedGoal(
+      createCampaignDto.selectedGoal,
+    );
 
     const campaignRepository =
       await this.tenantConnection.getRepository(Campaign);
 
-    // Map new DTO structure to entity structure
+    // Map CreateCampaignDto to Campaign entity
     const campaign = campaignRepository.create({
       name: createCampaignDto.name,
-      goal: createCampaignDto.selectedGoal as any, // Map to CampaignGoal enum
-      budget_type: 'LIFETIME' as any, // Default or derive from budgetAmount
+      goal: createCampaignDto.selectedGoal as any,
+      budget_type: 'LIFETIME' as any,
       budget_amount: parseFloat(createCampaignDto.budgetAmount) || 0,
       start_date: new Date(createCampaignDto.startDate),
       end_date: new Date(createCampaignDto.endDate),
-      status: createCampaignDto.status as any, // Map to CampaignStatus enum
+      status: createCampaignDto.status as any,
       organization_id,
       owner_id,
-      // Store additional data as JSON in a metadata field if needed
-      // For now, we'll map the basic fields
+      // New fields from DTO
+      selected_days: createCampaignDto.selectedDays,
+      audience: createCampaignDto.audience,
+      selected_broadcast_tv: createCampaignDto.selectedBroadcastTV,
+      selected_streaming: createCampaignDto.selectedStreaming,
+      bidding_strategy: createCampaignDto.biddingStrategy,
+      creative_data: createCampaignDto.creativeData,
+      // Metrics
+      impressions: createCampaignDto.impressions || 0,
+      reach: createCampaignDto.reach || 0,
+      spend: createCampaignDto.spend || 0,
+      roi: createCampaignDto.roi || null,
     });
 
     return await campaignRepository.save(campaign);
@@ -128,6 +140,37 @@ export class CampaignService {
         ? new Date(updateCampaignDto.published_at)
         : null;
     }
+    // Update new fields
+    if (updateCampaignDto.selectedDays) {
+      updateData.selected_days = updateCampaignDto.selectedDays;
+    }
+    if (updateCampaignDto.audience) {
+      updateData.audience = updateCampaignDto.audience;
+    }
+    if (updateCampaignDto.selectedBroadcastTV) {
+      updateData.selected_broadcast_tv = updateCampaignDto.selectedBroadcastTV;
+    }
+    if (updateCampaignDto.selectedStreaming) {
+      updateData.selected_streaming = updateCampaignDto.selectedStreaming;
+    }
+    if (updateCampaignDto.biddingStrategy) {
+      updateData.bidding_strategy = updateCampaignDto.biddingStrategy;
+    }
+    if (updateCampaignDto.creativeData) {
+      updateData.creative_data = updateCampaignDto.creativeData;
+    }
+    if (updateCampaignDto.impressions !== undefined) {
+      updateData.impressions = updateCampaignDto.impressions;
+    }
+    if (updateCampaignDto.reach !== undefined) {
+      updateData.reach = updateCampaignDto.reach;
+    }
+    if (updateCampaignDto.spend !== undefined) {
+      updateData.spend = updateCampaignDto.spend;
+    }
+    if (updateCampaignDto.roi) {
+      updateData.roi = updateCampaignDto.roi;
+    }
 
     return campaignRepository
       .update(campaign.id, updateData)
@@ -160,7 +203,10 @@ export class CampaignService {
     }
 
     // normalize and try exact enum match
-    const candidate = input.trim().toUpperCase().replace(/[\s-]+/g, '_');
+    const candidate = input
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
     if (ALLOWED_GOALS.includes(candidate)) return candidate;
 
     // fuzzy fallback (small typos)

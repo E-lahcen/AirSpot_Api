@@ -632,14 +632,82 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
   {
     version: 1764930787227,
     name: 'AddImageHistoryToStoryBoard',
-    up: async (queryRunner: QueryRunner): Promise<void> => {
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       await queryRunner.query(
-        `ALTER TABLE "storyboards" ADD "imageHistory" text array`,
+        `ALTER TABLE "${schema}"."storyboards" ADD "imageHistory" text array`,
       );
     },
-    down: async (queryRunner: QueryRunner): Promise<void> => {
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
       await queryRunner.query(
-        `ALTER TABLE "storyboards" DROP COLUMN "imageHistory"`,
+        `ALTER TABLE "${schema}"."storyboards" DROP COLUMN "imageHistory"`,
+      );
+    },
+  },
+  {
+    version: 1764959435632,
+    name: 'AddCampaignDtoFields',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "selected_days" jsonb`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "audience" jsonb`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "selected_broadcast_tv" text array`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "selected_streaming" text array`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "bidding_strategy" character varying(100)`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "creative_data" jsonb`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "impressions" integer NOT NULL DEFAULT '0'`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "reach" integer NOT NULL DEFAULT '0'`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "spend" numeric(10,2) NOT NULL DEFAULT '0'`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" ADD "roi" character varying(50)`,
+      );
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "roi"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "spend"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "reach"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "impressions"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "creative_data"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "bidding_strategy"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "selected_streaming"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "selected_broadcast_tv"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "audience"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."campaigns" DROP COLUMN "selected_days"`,
       );
     },
   },

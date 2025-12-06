@@ -76,6 +76,43 @@ export class Campaign extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   published_at: Date | null;
 
+  // Additional fields to match CreateCampaignDto
+  @Column({ type: 'jsonb', nullable: true })
+  selected_days: Record<string, any> | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  audience: {
+    locations: string[];
+    interests: string[];
+    demographics: number[];
+    genders: string[];
+  } | null;
+
+  @Column('text', { array: true, nullable: true })
+  selected_broadcast_tv: string[] | null;
+
+  @Column('text', { array: true, nullable: true })
+  selected_streaming: string[] | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  bidding_strategy: string | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  creative_data: Record<string, any> | null;
+
+  // Metrics fields
+  @Column({ type: 'integer', default: 0 })
+  impressions: number;
+
+  @Column({ type: 'integer', default: 0 })
+  reach: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  spend: number;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  roi: string | null;
+
   @OneToMany(() => AdVariation, (variation) => variation.campaign)
   ad_variations: AdVariation[];
 }
