@@ -178,13 +178,36 @@ async function applyMigrationsToTenantSchemas() {
         try {
           // Load and execute migration
           const migrationPath = path.join(migrationsDir, file);
+          
+          // Clear require cache to avoid stale modules
+          delete require.cache[require.resolve(migrationPath)];
+          
           const MigrationModule = require(migrationPath);
           
-          // Get the migration class from the module (handle different export patterns)
-          const MigrationClass = MigrationModule.default || MigrationModule[Object.keys(MigrationModule)[0]];
+          // Handle different export patterns:
+          // 1. module.exports = class ... (direct class export)
+          // 2. export class ... (named export, becomes MigrationModule.ClassName)
+          // 3. export default class ... (default export)
+          let MigrationClass;
+          
+          if (typeof MigrationModule === 'function') {
+            // Direct class export: module.exports = class ...
+            MigrationClass = MigrationModule;
+          } else if (MigrationModule.default && typeof MigrationModule.default === 'function') {
+            // Default export: export default class ...
+            MigrationClass = MigrationModule.default;
+          } else {
+            // Named export: export class ...
+            const keys = Object.keys(MigrationModule);
+            if (keys.length > 0 && typeof MigrationModule[keys[0]] === 'function') {
+              MigrationClass = MigrationModule[keys[0]];
+            }
+          }
           
           if (!MigrationClass || typeof MigrationClass !== 'function') {
             console.log('  ⚠️  Could not find migration class in: ' + file);
+            console.log('    Module type: ' + typeof MigrationModule);
+            console.log('    Module keys: ' + Object.keys(MigrationModule).join(', '));
             failedCount++;
             continue;
           }
