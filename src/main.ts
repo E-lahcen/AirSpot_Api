@@ -47,7 +47,7 @@ function startServer(appConfig: AppConfig) {
     await app.listen(port, '0.0.0.0').then(() => {
       const logger = new Logger('Bootstrap');
       logger.log(
-        `🚀 Application is running on: http://localhost:${port}/${globalPrefix}/v${defaultVersion}`,
+        `🚀 Application is now running on: http://localhost:${port}/${globalPrefix}/v${defaultVersion}`,
       );
       logger.log(
         `🚀 Application swagger docs available at: http://localhost:${port}/${globalPrefix}/docs`,
