@@ -40,18 +40,21 @@ if [ "$NODE_ENV" = "production" ] && [ -f "/app/dist/src/config/data-source.js" 
     DATA_SOURCE_PATH="/app/dist/src/config/data-source.js"
     TYPEORM_CLI="node /app/node_modules/typeorm/cli.js"
     MIGRATION_DIR="/app/dist/src/migrations"
+    OUTPUT_JS="--outputJs"
     echo "✓ Using compiled production code"
 elif [ "$NODE_ENV" = "production" ] && [ -f "dist/src/config/data-source.js" ]; then
     # Running from project root with compiled code
     DATA_SOURCE_PATH="dist/src/config/data-source.js"
     TYPEORM_CLI="node node_modules/typeorm/cli.js"
     MIGRATION_DIR="dist/src/migrations"
+    OUTPUT_JS="--outputJs"
     echo "✓ Using local compiled code"
 else
     # Running in development environment
     DATA_SOURCE_PATH="src/config/data-source.ts"
     TYPEORM_CLI="npx ts-node ./node_modules/typeorm/cli.js"
     MIGRATION_DIR="src/migrations"
+    OUTPUT_JS=""
     echo "✓ Using TypeScript source code"
 fi
 
@@ -67,7 +70,7 @@ echo "Generating migration: $MIGRATION_FILE"
 echo ""
 
 # Generate migration
-$TYPEORM_CLI migration:generate -d $DATA_SOURCE_PATH $MIGRATION_DIR/$MIGRATION_FILE
+$TYPEORM_CLI migration:generate -d $DATA_SOURCE_PATH $OUTPUT_JS $MIGRATION_DIR/$MIGRATION_FILE
 
 echo ""
 echo "✓ Migration generated successfully!"
