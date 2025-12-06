@@ -175,8 +175,39 @@ async function revertMigrationsFromTenantSchemas() {
 
         // Load and execute migration down
         const migrationPath = path.join(migrationsDir, migrationFile);
-        const MigrationClass = require(migrationPath);
-        const migrationInstance = new MigrationClass[Object.keys(MigrationClass)[0]]();
+        
+        // Clear require cache to avoid stale modules
+        delete require.cache[require.resolve(migrationPath)];
+        
+        const MigrationModule = require(migrationPath);
+        
+        // Handle different export patterns:
+        // 1. module.exports = class ... (direct class export)
+        // 2. export class ... (named export, becomes MigrationModule.ClassName)
+        // 3. export default class ... (default export)
+        let MigrationClass;
+        
+        if (typeof MigrationModule === 'function') {
+          // Direct class export: module.exports = class ...
+          MigrationClass = MigrationModule;
+        } else if (MigrationModule.default && typeof MigrationModule.default === 'function') {
+          // Default export: export default class ...
+          MigrationClass = MigrationModule.default;
+        } else {
+          // Named export: export class ...
+          const keys = Object.keys(MigrationModule);
+          if (keys.length > 0 && typeof MigrationModule[keys[0]] === 'function') {
+            MigrationClass = MigrationModule[keys[0]];
+          }
+        }
+        
+        if (!MigrationClass || typeof MigrationClass !== 'function') {
+          console.log('  ✗ Could not find migration class in: ' + migrationFile);
+          failedCount++;
+          continue;
+        }
+
+        const migrationInstance = new MigrationClass();
 
         // Create a query runner for the tenant schema
         const queryRunner = dataSource.createQueryRunner();
