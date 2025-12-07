@@ -145,52 +145,48 @@ export class TenantManagementService {
   }
 
   async findByCompanyName(companyName: string): Promise<Tenant | null> {
-    return this.tenantRepository.findOne({
+    const tenant = await this.tenantRepository.findOne({
       where: { company_name: companyName },
     });
+    if (tenant) {
+      await this.attachMemberCounts([tenant]);
+    }
+    return tenant;
   }
 
   async findBySlug(slug: string): Promise<Tenant | null> {
-    return this.tenantRepository.findOne({ where: { slug } });
+    const tenant = await this.tenantRepository.findOne({ where: { slug } });
+    if (tenant) {
+      await this.attachMemberCounts([tenant]);
+    }
+    return tenant;
   }
 
   async findByOwnerEmail(ownerEmail: string): Promise<Tenant | null> {
-    return this.tenantRepository.findOne({
+    const tenant = await this.tenantRepository.findOne({
       where: { owner_email: ownerEmail },
     });
+    if (tenant) {
+      await this.attachMemberCounts([tenant]);
+    }
+    return tenant;
   }
 
   async getAllTenants(): Promise<Tenant[]> {
     const tenants = await this.tenantRepository.find({
       order: { created_at: 'DESC' },
     });
-
-    const memberCounts = await this.dataSource
-      .getRepository(UserTenant)
-      .createQueryBuilder('user_tenant')
-      .select('user_tenant.tenant_id', 'tenant_id')
-      .addSelect('COUNT(user_tenant.id)', 'count')
-      .where('user_tenant.deleted_at IS NULL')
-      .groupBy('user_tenant.tenant_id')
-      .getRawMany<TenantMemberCount>();
-
-    const countMap = new Map<string, number>();
-    memberCounts.forEach((item) => {
-      countMap.set(item.tenant_id, parseInt(item.count, 10));
-    });
-
-    tenants.forEach((tenant) => {
-      tenant.members_count = countMap.get(tenant.id) || 0;
-    });
-
+    await this.attachMemberCounts(tenants);
     return tenants;
   }
 
   async getTenantsByOwner(userId: string): Promise<Tenant[]> {
-    return this.tenantRepository.find({
+    const tenants = await this.tenantRepository.find({
       where: { owner_id: userId },
       order: { created_at: 'DESC' },
     });
+    await this.attachMemberCounts(tenants);
+    return tenants;
   }
 
   async deactivateTenant(slug: string): Promise<void> {
@@ -349,5 +345,30 @@ export class TenantManagementService {
       where: { slug },
     });
     return tenant !== null && tenant.is_active;
+  }
+
+  private async attachMemberCounts(tenants: Tenant[]): Promise<void> {
+    if (tenants.length === 0) return;
+
+    const tenantIds = tenants.map((t) => t.id);
+
+    const memberCounts = await this.dataSource
+      .getRepository(UserTenant)
+      .createQueryBuilder('user_tenant')
+      .select('user_tenant.tenant_id', 'tenant_id')
+      .addSelect('COUNT(user_tenant.id)', 'count')
+      .where('user_tenant.tenant_id IN (:...tenantIds)', { tenantIds })
+      .andWhere('user_tenant.deleted_at IS NULL')
+      .groupBy('user_tenant.tenant_id')
+      .getRawMany<TenantMemberCount>();
+
+    const countMap = new Map<string, number>();
+    memberCounts.forEach((item) => {
+      countMap.set(item.tenant_id, parseInt(item.count, 10));
+    });
+
+    tenants.forEach((tenant) => {
+      tenant.members_count = countMap.get(tenant.id) || 0;
+    });
   }
 }
