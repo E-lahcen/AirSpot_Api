@@ -6,6 +6,7 @@ import {
   TENANT_MIGRATIONS,
   TenantMigrationHelpers,
 } from '@app/migrations/tenant-schema-migrations';
+import { UserTenant } from '@app/modules/user-tenant/entities/user-tenant.entity';
 
 export interface CreateTenantData {
   companyName: string;
@@ -19,6 +20,11 @@ export interface CreateTenantData {
   defaultRole?: string;
   enforceDomain?: boolean;
   domain?: string;
+}
+
+interface TenantMemberCount {
+  tenant_id: string;
+  count: string;
 }
 
 @Injectable()
@@ -155,7 +161,29 @@ export class TenantManagementService {
   }
 
   async getAllTenants(): Promise<Tenant[]> {
-    return this.tenantRepository.find({ order: { created_at: 'DESC' } });
+    const tenants = await this.tenantRepository.find({
+      order: { created_at: 'DESC' },
+    });
+
+    const memberCounts = await this.dataSource
+      .getRepository(UserTenant)
+      .createQueryBuilder('user_tenant')
+      .select('user_tenant.tenant_id', 'tenant_id')
+      .addSelect('COUNT(user_tenant.id)', 'count')
+      .where('user_tenant.deleted_at IS NULL')
+      .groupBy('user_tenant.tenant_id')
+      .getRawMany<TenantMemberCount>();
+
+    const countMap = new Map<string, number>();
+    memberCounts.forEach((item) => {
+      countMap.set(item.tenant_id, parseInt(item.count, 10));
+    });
+
+    tenants.forEach((tenant) => {
+      tenant.members_count = countMap.get(tenant.id) || 0;
+    });
+
+    return tenants;
   }
 
   async getTenantsByOwner(userId: string): Promise<Tenant[]> {
