@@ -27,6 +27,10 @@ interface TenantMemberCount {
   count: string;
 }
 
+interface TenantRoleResult {
+  role_name: string;
+}
+
 @Injectable()
 export class TenantManagementService {
   private readonly logger = new Logger(TenantManagementService.name);
@@ -35,6 +39,8 @@ export class TenantManagementService {
     @InjectDataSource() private readonly dataSource: DataSource,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(UserTenant)
+    private readonly userTenantRepository: Repository<UserTenant>,
   ) {}
 
   async setTenantOwner(tenantId: string, ownerId: string): Promise<void> {
@@ -181,12 +187,72 @@ export class TenantManagementService {
   }
 
   async getTenantsByOwner(userId: string): Promise<Tenant[]> {
-    const tenants = await this.tenantRepository.find({
+    // 1. Get tenants where user is owner
+    const ownedTenants = await this.tenantRepository.find({
       where: { owner_id: userId },
       order: { created_at: 'DESC' },
     });
-    await this.attachMemberCounts(tenants);
-    return tenants;
+
+    // 2. Get tenants where user is member
+    const userTenants = await this.userTenantRepository.find({
+      where: { user_id: userId },
+      relations: ['tenant'],
+    });
+
+    const memberTenants = userTenants
+      .map((ut) => ut.tenant)
+      .filter((t) => t && t.is_active);
+
+    // 3. Combine and deduplicate
+    const allTenantsMap = new Map<string, Tenant>();
+    ownedTenants.forEach((t) => allTenantsMap.set(t.id, t));
+    memberTenants.forEach((t) => allTenantsMap.set(t.id, t));
+
+    const allTenants = Array.from(allTenantsMap.values());
+
+    // 4. Set roles
+    for (const tenant of allTenants) {
+      if (tenant.owner_id === userId) {
+        tenant.role = 'owner';
+      } else {
+        tenant.role = await this.getUserRoleInTenant(
+          tenant.schema_name,
+          userId,
+        );
+      }
+    }
+
+    await this.attachMemberCounts(allTenants);
+    return allTenants;
+  }
+
+  private async getUserRoleInTenant(
+    schemaName: string,
+    userId: string,
+  ): Promise<string> {
+    try {
+      const result: TenantRoleResult[] = await this.dataSource.query(
+        `SELECT r.name as role_name 
+         FROM "${schemaName}".users u
+         JOIN "${schemaName}".user_roles ur ON u.id = ur.user_id
+         JOIN "${schemaName}".roles r ON ur.role_id = r.id
+         WHERE u.id = $1`,
+        [userId],
+      );
+
+      if (result && result.length > 0) {
+        const roles = result.map((r) => r.role_name);
+        if (roles.includes('owner')) return 'owner';
+        if (roles.includes('admin')) return 'admin';
+        return 'member';
+      }
+      return 'member';
+    } catch (error) {
+      this.logger.warn(
+        `Failed to fetch role for user ${userId} in schema ${schemaName}: ${error}`,
+      );
+      return 'member';
+    }
   }
 
   async deactivateTenant(slug: string): Promise<void> {
@@ -370,6 +436,5 @@ export class TenantManagementService {
     tenants.forEach((tenant) => {
       tenant.members_count = countMap.get(tenant.id) || 0;
     });
-    console.log('tenants', tenants);
   }
 }

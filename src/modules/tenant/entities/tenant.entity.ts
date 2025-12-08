@@ -45,7 +45,6 @@ export class Tenant {
   @Column({ type: 'varchar', length: 100, nullable: true })
   region?: string | null;
 
-  @Column({ name: 'role', type: 'varchar', length: 50, nullable: true })
   role?: string | null;
 
   @Column({ name: 'enforce_domain', type: 'boolean', default: false })

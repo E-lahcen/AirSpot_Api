@@ -12,9 +12,15 @@ import { UserModule } from '../user/user.module';
 import { RoleModule } from '../role/role.module';
 import { TenantConnectionCleanupInterceptor } from './interceptors/tenant-connection-cleanup.interceptor';
 
+import { UserTenant } from '@app/modules/user-tenant/entities/user-tenant.entity';
+
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([Tenant]), UserModule, RoleModule],
+  imports: [
+    TypeOrmModule.forFeature([Tenant, UserTenant]),
+    UserModule,
+    RoleModule,
+  ],
   controllers: [TenantController],
   providers: [
     TenantService,
