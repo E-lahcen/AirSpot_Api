@@ -434,7 +434,7 @@ export class TenantManagementService {
     });
 
     tenants.forEach((tenant) => {
-      tenant.members_count = countMap.get(tenant.id) || 0;
+      tenant.members = countMap.get(tenant.id) || 0;
     });
   }
 }

@@ -34,7 +34,7 @@ export class Tenant {
   created_by_id?: string;
 
   @Column({ name: 'members_count', type: 'int', default: 0 })
-  members_count: number;
+  members: number;
 
   @Column({ type: 'text', nullable: true })
   description?: string | null;
