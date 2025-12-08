@@ -90,7 +90,7 @@ export class TenantManagementService {
       description: data.description || null,
       logo: data.logo || null,
       region: data.region || null,
-      default_role: data.defaultRole || null,
+      role: data.defaultRole || null,
       enforce_domain: data.enforceDomain ?? false,
       domain:
         data.enforceDomain && data.domain ? data.domain.toLowerCase() : null,
