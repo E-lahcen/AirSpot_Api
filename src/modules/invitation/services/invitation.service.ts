@@ -3,27 +3,27 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
-} from "@nestjs/common";
-import { TenantConnectionService } from "@app/modules/tenant/services/tenant-connection.service";
+} from '@nestjs/common';
+import { TenantConnectionService } from '@app/modules/tenant/services/tenant-connection.service';
 import {
   Invitation,
   InvitationStatus,
   InvitationType,
-} from "../entities/invitation.entity";
-import { CreateInvitationDto } from "../dto/create-invitation";
-import { AcceptInvitationDto } from "../dto/accept-invitation.dto";
-import { AcceptInvitationResponseDto } from "../dto/accept-invitation-response.dto";
-import { FilterInvitationDto } from "../dto/filter-invitation.dto";
-import { randomBytes } from "crypto";
-import { InvitationTemplateService } from "./invitation-template.service";
-import { EmailService } from "@app/modules/notification/services/email.service";
-import { AuthenticatedUser } from "@app/modules/auth/decorators";
-import { TenantManagementService } from "@app/modules/tenant/services/tenant-management.service";
-import { RoleService } from "@app/modules/role/services/role.service";
-import { Role } from "@app/modules/role/entities/role.entity";
-import { AuthService } from "@app/modules/auth/services/auth.service";
-import { paginate, Pagination } from "nestjs-typeorm-paginate";
-import { FindOptionsWhere } from "typeorm";
+} from '../entities/invitation.entity';
+import { CreateInvitationDto } from '../dto/create-invitation';
+import { AcceptInvitationDto } from '../dto/accept-invitation.dto';
+import { AcceptInvitationResponseDto } from '../dto/accept-invitation-response.dto';
+import { FilterInvitationDto } from '../dto/filter-invitation.dto';
+import { randomBytes } from 'crypto';
+import { InvitationTemplateService } from './invitation-template.service';
+import { EmailService } from '@app/modules/notification/services/email.service';
+import { AuthenticatedUser } from '@app/modules/auth/decorators';
+import { TenantManagementService } from '@app/modules/tenant/services/tenant-management.service';
+import { RoleService } from '@app/modules/role/services/role.service';
+import { Role } from '@app/modules/role/entities/role.entity';
+import { AuthService } from '@app/modules/auth/services/auth.service';
+import { paginate, Pagination } from 'nestjs-typeorm-paginate';
+import { FindOptionsWhere } from 'typeorm';
 
 @Injectable()
 export class InvitationService {
@@ -42,25 +42,25 @@ export class InvitationService {
       role = await this.roleService.findById(roleId);
       if (!role) {
         throw new NotFoundException({
-          message: "Role not found",
+          message: 'Role not found',
           errors: [
             {
-              code: "ROLE_NOT_FOUND",
-              message: "The role specified in the invitation does not exist",
+              code: 'ROLE_NOT_FOUND',
+              message: 'The role specified in the invitation does not exist',
             },
           ],
         });
       }
     } else {
       // Default to member role
-      role = await this.roleService.findByName("member");
+      role = await this.roleService.findByName('member');
       if (!role) {
         throw new NotFoundException({
-          message: "Member role not found",
+          message: 'Member role not found',
           errors: [
             {
-              code: "ROLE_NOT_FOUND",
-              message: "Default member role does not exist",
+              code: 'ROLE_NOT_FOUND',
+              message: 'Default member role does not exist',
             },
           ],
         });
@@ -75,65 +75,88 @@ export class InvitationService {
   async createInvitation(
     invitor: AuthenticatedUser,
     createInvitationDto: CreateInvitationDto,
-  ): Promise<Invitation> {
+  ): Promise<Invitation[]> {
     const role = await this.getInvitationRole(createInvitationDto.role_id);
+    const emailsToInvite = new Set<string>();
+
+    if (createInvitationDto.email) {
+      emailsToInvite.add(createInvitationDto.email);
+    }
+
+    if (createInvitationDto.emails && createInvitationDto.emails.length > 0) {
+      createInvitationDto.emails.forEach((email) => emailsToInvite.add(email));
+    }
+
+    if (emailsToInvite.size === 0) {
+      throw new BadRequestException({
+        message: 'No email provided',
+        errors: [
+          {
+            code: 'NO_EMAIL_PROVIDED',
+            message: 'You must provide at least one email address',
+          },
+        ],
+      });
+    }
 
     const manager = await this.tenantConnection.getEntityManager();
+    const createdInvitations: Invitation[] = [];
 
-    return manager.transaction(async (transactionalManager) => {
+    await manager.transaction(async (transactionalManager) => {
       const repo = transactionalManager.getRepository(Invitation);
 
-      // Check if there's already a pending invitation for this email
-      const existingInvitation = await repo.findOne({
-        where: {
-          email: createInvitationDto.email,
-          status: InvitationStatus.PENDING,
-          type: createInvitationDto.type,
-        },
-      });
-
-      if (existingInvitation) {
-        throw new ConflictException({
-          message: "Invitation already exists",
-          errors: [
-            {
-              code: "INVITATION_EXISTS",
-              message: "A pending invitation for this email already exists",
-            },
-          ],
+      for (const email of emailsToInvite) {
+        // Check if there's already a pending invitation for this email
+        const existingInvitation = await repo.findOne({
+          where: {
+            email,
+            status: InvitationStatus.PENDING,
+            type: createInvitationDto.type,
+          },
         });
+
+        if (existingInvitation) {
+          // Skip or warn? For now, we'll just log and skip to avoid failing the whole batch
+          // or we could throw if strictness is required.
+          // Let's decide to skip existing pending invitations silently or maybe return a status.
+          // User request implies "create multiple", so existing ones shouldn't block new ones ideally.
+          continue;
+        }
+
+        // Generate secure token
+        const token = this.generateToken();
+
+        // Set expiration (7 days from now by default)
+        const expiresIn = createInvitationDto.expires_in || 7;
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + expiresIn);
+
+        const invitation = repo.create({
+          email,
+          invitor_id: invitor.id,
+          type: createInvitationDto.type,
+          role_id: role.id,
+          tenant_id: invitor.tenantId,
+          tenant_slug: invitor.slug,
+          status: InvitationStatus.PENDING,
+          token,
+          expires_at: expiresAt,
+          metadata: createInvitationDto.metadata || {},
+        });
+
+        const savedInvitation = await repo.save(invitation);
+        createdInvitations.push(savedInvitation);
+
+        const emailTemplate =
+          this.invitationTemplateService.generateInvitationEmail(
+            savedInvitation,
+          );
+
+        await this.emailService.send(emailTemplate);
       }
-
-      // Generate secure token
-      const token = this.generateToken();
-
-      // Set expiration (7 days from now by default)
-      const expiresIn = createInvitationDto.expires_in || 7;
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + expiresIn);
-
-      const invitation = repo.create({
-        email: createInvitationDto.email,
-        invitor_id: invitor.id,
-        type: createInvitationDto.type,
-        role_id: role.id,
-        tenant_id: invitor.tenantId,
-        tenant_slug: invitor.slug,
-        status: InvitationStatus.PENDING,
-        token,
-        expires_at: expiresAt,
-        metadata: createInvitationDto.metadata || {},
-      });
-
-      const savedInvitation = await repo.save(invitation);
-
-      const emailTemplate =
-        this.invitationTemplateService.generateInvitationEmail(savedInvitation);
-
-      await this.emailService.send(emailTemplate);
-
-      return savedInvitation;
     });
+
+    return createdInvitations;
   }
 
   // /**
@@ -146,14 +169,14 @@ export class InvitationService {
     const invitation = await invitationRepo.findOne({ where: { token } });
 
     if (!invitation) {
-      throw new NotFoundException("Invitation not found");
+      throw new NotFoundException('Invitation not found');
     }
 
     // Check if expired
     if (new Date() > invitation.expires_at) {
       invitation.status = InvitationStatus.EXPIRED;
       await invitationRepo.save(invitation);
-      throw new BadRequestException("Invitation has expired");
+      throw new BadRequestException('Invitation has expired');
     }
 
     // Check if already accepted
@@ -187,10 +210,10 @@ export class InvitationService {
       case InvitationType.EVENT_PARTICIPATION:
       case InvitationType.DOCUMENT_REVIEW:
         throw new BadRequestException({
-          message: "Invitation type not yet implemented",
+          message: 'Invitation type not yet implemented',
           errors: [
             {
-              code: "NOT_IMPLEMENTED",
+              code: 'NOT_IMPLEMENTED',
               message: `Handling for ${invitation.type} is not yet implemented`,
             },
           ],
@@ -198,11 +221,11 @@ export class InvitationService {
 
       default:
         throw new BadRequestException({
-          message: "Unknown invitation type",
+          message: 'Unknown invitation type',
           errors: [
             {
-              code: "UNKNOWN_TYPE",
-              message: "This invitation type is not recognized",
+              code: 'UNKNOWN_TYPE',
+              message: 'This invitation type is not recognized',
             },
           ],
         });
@@ -223,12 +246,12 @@ export class InvitationService {
       !acceptInvitationDto.last_name
     ) {
       throw new BadRequestException({
-        message: "Missing required fields for registration",
+        message: 'Missing required fields for registration',
         errors: [
           {
-            code: "MISSING_FIELDS",
+            code: 'MISSING_FIELDS',
             message:
-              "first_name, last_name, and password are required for tenant registration",
+              'first_name, last_name, and password are required for tenant registration',
           },
         ],
       });
@@ -240,12 +263,12 @@ export class InvitationService {
     );
     if (!tenant) {
       throw new NotFoundException({
-        message: "Tenant not found",
+        message: 'Tenant not found',
         errors: [
           {
-            code: "TENANT_NOT_FOUND",
+            code: 'TENANT_NOT_FOUND',
             message:
-              "The tenant associated with this invitation no longer exists",
+              'The tenant associated with this invitation no longer exists',
           },
         ],
       });
@@ -254,11 +277,11 @@ export class InvitationService {
     // Check if tenant is active
     if (!tenant.is_active) {
       throw new BadRequestException({
-        message: "Tenant is inactive",
+        message: 'Tenant is inactive',
         errors: [
           {
-            code: "TENANT_INACTIVE",
-            message: "This tenant account has been deactivated",
+            code: 'TENANT_INACTIVE',
+            message: 'This tenant account has been deactivated',
           },
         ],
       });
@@ -309,12 +332,12 @@ export class InvitationService {
 
       // Handle unknown errors
       throw new BadRequestException({
-        message: "Failed to accept invitation",
+        message: 'Failed to accept invitation',
         errors: [
           {
-            code: "INVITATION_ACCEPTANCE_FAILED",
+            code: 'INVITATION_ACCEPTANCE_FAILED',
             message:
-              error instanceof Error ? error.message : "Unknown error occurred",
+              error instanceof Error ? error.message : 'Unknown error occurred',
           },
         ],
       });
@@ -330,7 +353,7 @@ export class InvitationService {
     const invitation = await this.findById(invitationId);
 
     if (!invitation) {
-      throw new NotFoundException("Invitation not found");
+      throw new NotFoundException('Invitation not found');
     }
 
     invitation.status = InvitationStatus.REVOKED;
@@ -351,10 +374,10 @@ export class InvitationService {
       invitation.status !== InvitationStatus.EXPIRED
     ) {
       throw new BadRequestException({
-        message: "Invitation cannot be resent",
+        message: 'Invitation cannot be resent',
         errors: [
           {
-            code: "INVALID_STATUS",
+            code: 'INVALID_STATUS',
             message: `Only pending or expired invitations can be resent. Current status: ${invitation.status}`,
           },
         ],
@@ -421,7 +444,7 @@ export class InvitationService {
         page: filters?.page || 1,
         limit: filters?.limit || 10,
       },
-      { where, relations: ["invitor", "role"], order: { created_at: "DESC" } },
+      { where, relations: ['invitor', 'role'], order: { created_at: 'DESC' } },
     );
   }
 
@@ -437,11 +460,11 @@ export class InvitationService {
 
     if (!invitation) {
       throw new NotFoundException({
-        message: "Invitation not found",
+        message: 'Invitation not found',
         errors: [
           {
-            code: "INVITATION_NOT_FOUND",
-            message: "No invitation found with the specified ID",
+            code: 'INVITATION_NOT_FOUND',
+            message: 'No invitation found with the specified ID',
           },
         ],
       });
@@ -464,7 +487,7 @@ export class InvitationService {
   //  * Generate secure random token
   //  */
   private generateToken(): string {
-    const random = randomBytes(32).toString("hex");
+    const random = randomBytes(32).toString('hex');
     return `${random}${Date.now()}`; // Append timestamp for uniqueness
   }
 }

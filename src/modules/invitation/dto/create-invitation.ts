@@ -1,19 +1,22 @@
 import {
   IsEmail,
-  IsNotEmpty,
   IsString,
   IsOptional,
   IsEnum,
   IsObject,
   IsUUID,
   IsNumber,
-} from "class-validator";
-import { InvitationType } from "../entities/invitation.entity";
+} from 'class-validator';
+import { InvitationType } from '../entities/invitation.entity';
 
 export class CreateInvitationDto {
   @IsEmail()
-  @IsNotEmpty()
-  email: string;
+  @IsOptional()
+  email?: string; // Kept for backward compatibility
+
+  @IsOptional()
+  @IsEmail({}, { each: true })
+  emails?: string[];
 
   @IsEnum(InvitationType)
   @IsOptional()
