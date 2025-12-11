@@ -21,6 +21,11 @@ import { UserTenantService } from '@app/modules/user-tenant/services/user-tenant
 import { Role } from '@app/modules/role/entities/role.entity';
 import { User } from '@app/modules/user/entities/user.entity';
 import { Tenant } from '@app/modules/tenant/entities/tenant.entity';
+import { EmailVerification } from '../entities/email-verification.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { EmailService } from '@app/modules/notification/services/email.service';
+import { SendVerificationDto } from '../dto/send-verification.dto';
 
 export interface CreateTenantUserParams {
   email: string;
@@ -50,6 +55,9 @@ export class AuthService {
     private readonly configService: ConfigService<EnvironmentVariables, true>,
     private readonly firebaseService: FirebaseService,
     private readonly userTenantService: UserTenantService,
+    @InjectRepository(EmailVerification)
+    private readonly emailVerificationRepository: Repository<EmailVerification>,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -178,7 +186,88 @@ export class AuthService {
     }
   }
 
+  async sendVerificationCode(dto: SendVerificationDto) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minutes expiration
+
+    let verification = await this.emailVerificationRepository.findOne({
+      where: { email: dto.email },
+    });
+
+    if (!verification) {
+      verification = this.emailVerificationRepository.create({
+        email: dto.email,
+      });
+    }
+
+    verification.code = code;
+    verification.expires_at = expiresAt;
+    verification.is_verified = false;
+
+    await this.emailVerificationRepository.save(verification);
+
+    await this.emailService.send({
+      recipient: dto.email,
+      subject: 'AirSpot Verification Code',
+      message: `Your verification code is: ${code}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Verify your email</h2>
+          <p>Use the following code to verify your email address:</p>
+          <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
+            ${code}
+          </div>
+          <p>This code will expire in 15 minutes.</p>
+        </div>
+      `,
+    });
+
+    return { message: 'Verification code sent' };
+  }
+
   async register(dto: RegisterDto) {
+    // Step 0: Verify Email Code
+    const verification = await this.emailVerificationRepository.findOne({
+      where: { email: dto.email },
+    });
+
+    if (!verification) {
+      throw new BadRequestException({
+        message: 'Verification code required',
+        errors: [
+          {
+            code: 'VERIFICATION_REQUIRED',
+            message: 'Please request a verification code first',
+          },
+        ],
+      });
+    }
+
+    if (verification.code !== dto.verification_code) {
+      throw new BadRequestException({
+        message: 'Invalid verification code',
+        errors: [
+          {
+            code: 'INVALID_CODE',
+            message: 'The provided verification code is incorrect',
+          },
+        ],
+      });
+    }
+
+    if (new Date() > verification.expires_at) {
+      throw new BadRequestException({
+        message: 'Verification code expired',
+        errors: [
+          {
+            code: 'CODE_EXPIRED',
+            message: 'The verification code has expired',
+          },
+        ],
+      });
+    }
+
     try {
       // Step 1: Check if company already has a tenant
       const existingTenant =
@@ -266,6 +355,14 @@ export class AuthService {
           },
         ],
       });
+    } finally {
+      // Clean up verification (optional, can keep for logs but remove for security/reuse)
+      const verification = await this.emailVerificationRepository.findOne({
+        where: { email: dto.email },
+      });
+      if (verification) {
+        await this.emailVerificationRepository.remove(verification);
+      }
     }
   }
 
@@ -359,6 +456,24 @@ export class AuthService {
         });
       }
 
+      if (tenant.status !== 'approved') {
+        const isSuperAdmin = user.roles?.some(
+          (role) => role.name === 'super_admin',
+        );
+
+        if (!isSuperAdmin) {
+          throw new UnauthorizedException({
+            message: 'Tenant verification pending',
+            errors: [
+              {
+                code: 'TENANT_NOT_APPROVED',
+                message: `Your organization is currently ${tenant.status}. Please contact support.`,
+              },
+            ],
+          });
+        }
+      }
+
       return {
         access_token: customToken,
         user,
@@ -448,6 +563,18 @@ export class AuthService {
       });
     }
 
+    if (!tenant.is_active) {
+      throw new UnauthorizedException({
+        message: 'Tenant is inactive',
+        errors: [
+          {
+            code: 'TENANT_INACTIVE',
+            message: 'This tenant account has been deactivated',
+          },
+        ],
+      });
+    }
+
     // Exchange custom token for ID token using tenant-specific Firebase REST API
     const response = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${apiKey}`,
@@ -485,6 +612,31 @@ export class AuthService {
       expiresIn: string;
     };
 
+    if (tenant.status !== 'approved') {
+      const tenantAuth = this.auth
+        .tenantManager()
+        .authForTenant(tenant.firebase_tenant_id);
+
+      const decoded = await tenantAuth.verifyIdToken(data.idToken);
+      const user = await this.userService.findByFirebaseUid(decoded.uid);
+
+      const isSuperAdmin = user?.roles?.some(
+        (role) => role.name === 'super_admin',
+      );
+
+      if (!isSuperAdmin) {
+        throw new UnauthorizedException({
+          message: 'Tenant verification pending',
+          errors: [
+            {
+              code: 'TENANT_NOT_APPROVED',
+              message: `Your organization is currently ${tenant.status}. Please contact support.`,
+            },
+          ],
+        });
+      }
+    }
+
     return {
       id_token: data.idToken,
       refresh_token: data.refreshToken,
@@ -516,6 +668,18 @@ export class AuthService {
           {
             code: 'TENANT_NOT_FOUND',
             message: `No tenant found with slug: ${tenantSlug}`,
+          },
+        ],
+      });
+    }
+
+    if (!tenant.is_active) {
+      throw new UnauthorizedException({
+        message: 'Tenant is inactive',
+        errors: [
+          {
+            code: 'TENANT_INACTIVE',
+            message: 'This tenant account has been deactivated',
           },
         ],
       });
@@ -559,6 +723,31 @@ export class AuthService {
       user_id: string;
       project_id: string;
     };
+
+    if (tenant.status !== 'approved') {
+      const tenantAuth = this.auth
+        .tenantManager()
+        .authForTenant(tenant.firebase_tenant_id);
+
+      const decoded = await tenantAuth.verifyIdToken(data.id_token);
+      const user = await this.userService.findByFirebaseUid(decoded.uid);
+
+      const isSuperAdmin = user?.roles?.some(
+        (role) => role.name === 'super_admin',
+      );
+
+      if (!isSuperAdmin) {
+        throw new UnauthorizedException({
+          message: 'Tenant verification pending',
+          errors: [
+            {
+              code: 'TENANT_NOT_APPROVED',
+              message: `Your organization is currently ${tenant.status}. Please contact support.`,
+            },
+          ],
+        });
+      }
+    }
 
     return {
       id_token: data.id_token,

@@ -63,4 +63,12 @@ export class RegisterDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @ApiProperty({
+    description: 'Email verification code',
+    example: '123456',
+  })
+  @IsString()
+  @IsNotEmpty()
+  verification_code: string;
 }

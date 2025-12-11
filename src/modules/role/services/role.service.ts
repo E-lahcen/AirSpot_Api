@@ -41,6 +41,14 @@ export class RoleService {
       await this.createRole('admin', 'Administrator with full access');
     }
 
+    const superAdminRole = await this.findByName('super_admin');
+    if (!superAdminRole) {
+      await this.createRole(
+        'super_admin',
+        'Super Administrator with access to all organizations and accounts',
+      );
+    }
+
     const memberRole = await this.findByName('member');
     if (!memberRole) {
       await this.createRole('member', 'Regular member with limited access');

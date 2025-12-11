@@ -129,9 +129,17 @@ export class AppModule implements NestModule {
       .exclude(
         { path: '/docs/', method: RequestMethod.ALL },
         { path: '/auth/register', method: RequestMethod.POST, version: '1' },
+        {
+          path: '/auth/send-verification-code',
+          method: RequestMethod.POST,
+          version: '1',
+        },
         { path: '/auth/login', method: RequestMethod.POST, version: '1' },
-        { path: '/user-tenants', method: RequestMethod.GET, version: '1' },
-        { path: '/user-tenants/:id', method: RequestMethod.GET, version: '1' },
+        {
+          path: '/auth/send-verification-code',
+          method: RequestMethod.POST,
+          version: '1',
+        },
         {
           path: '/auth/exchange-token',
           method: RequestMethod.POST,

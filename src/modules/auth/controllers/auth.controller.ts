@@ -16,10 +16,19 @@ import {
   ApiRefreshToken,
 } from '../docs';
 
+import { SendVerificationDto } from '../dto/send-verification.dto';
+
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('send-verification-code')
+  @Public()
+  @ResponseMessage({ message: 'Verification code sent successfully' })
+  async sendVerificationCode(@Body() dto: SendVerificationDto) {
+    return this.authService.sendVerificationCode(dto);
+  }
 
   @Post('register')
   @ApiRegister()

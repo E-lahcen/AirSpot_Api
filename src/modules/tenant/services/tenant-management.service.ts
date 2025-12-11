@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
@@ -258,6 +263,19 @@ export class TenantManagementService {
   async deactivateTenant(slug: string): Promise<void> {
     await this.tenantRepository.update({ slug }, { is_active: false });
     this.logger.log(`Tenant deactivated: ${slug}`);
+  }
+
+  async updateTenantStatus(
+    id: string,
+    status: 'pending' | 'approved' | 'rejected',
+  ): Promise<Tenant> {
+    await this.tenantRepository.update(id, { status });
+    const tenant = await this.tenantRepository.findOne({ where: { id } });
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with ID ${id} not found`);
+    }
+    this.logger.log(`Tenant ${id} status updated to ${status}`);
+    return tenant;
   }
 
   /**
