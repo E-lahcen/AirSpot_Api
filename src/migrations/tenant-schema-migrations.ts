@@ -715,6 +715,9 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
     version: 1733999000000,
     name: 'AddTasksAndTaskTemplates',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Ensure uuid-ossp extension is available
+      await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
       // Create task status enum
       await queryRunner.query(`
         DO $$ BEGIN
@@ -754,7 +757,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
           "description" text NOT NULL,
           "related_campaign_id" uuid,
           "related_creative_id" uuid,
-          "assigned_user_id" uuid NOT NULL,
+          "assigned_user_id" uuid,
           "status" "${schema}"."task_status_enum" NOT NULL DEFAULT 'To Do',
           "priority" "${schema}"."priority_enum" NOT NULL DEFAULT 'Medium',
           "due_date" date NOT NULL,
@@ -823,7 +826,7 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
         ADD CONSTRAINT "FK_tasks_user"
         FOREIGN KEY ("assigned_user_id")
         REFERENCES "${schema}"."users"("id")
-        ON DELETE CASCADE
+        ON DELETE SET NULL
       `);
     },
     down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
