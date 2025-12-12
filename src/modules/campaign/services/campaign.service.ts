@@ -9,10 +9,15 @@ import { paginate, Pagination } from 'nestjs-typeorm-paginate';
 import { FindOptionsWhere, Like } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { ALLOWED_GOALS, levenshtein } from '../helper/goalAdapter';
+import { TaskService } from '@app/modules/task/services/task.service';
+import { TaskStatus, Priority } from '@app/modules/task/entities/task.entity';
 
 @Injectable()
 export class CampaignService {
-  constructor(private readonly tenantConnection: TenantConnectionService) {}
+  constructor(
+    private readonly tenantConnection: TenantConnectionService,
+    private readonly taskService: TaskService,
+  ) {}
 
   async create(
     createCampaignDto: CreateCampaignDto,
@@ -52,7 +57,12 @@ export class CampaignService {
       roi: createCampaignDto.roi || null,
     });
 
-    return await campaignRepository.save(campaign);
+    const savedCampaign = await campaignRepository.save(campaign);
+
+    // Automatically create default tasks for the new campaign
+    await this.createDefaultTasksForCampaign(savedCampaign, organization_id);
+
+    return savedCampaign;
   }
 
   async findAll(filterDto: FilterCampaignDto): Promise<Pagination<Campaign>> {
@@ -182,6 +192,95 @@ export class CampaignService {
     const campaignRepository =
       await this.tenantConnection.getRepository(Campaign);
     await campaignRepository.remove(campaign);
+  }
+
+  /**
+   * Create default tasks for a newly created campaign
+   * These tasks guide the user through the campaign workflow
+   */
+  private async createDefaultTasksForCampaign(
+    campaign: Campaign,
+    organization_id: string,
+  ): Promise<void> {
+    const startDate = new Date(campaign.start_date);
+    const endDate = new Date(campaign.end_date);
+    const campaignDuration = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    // Calculate task due dates based on campaign timeline
+    const task1DueDate = new Date(startDate);
+    task1DueDate.setDate(task1DueDate.getDate() - 7); // 7 days before campaign start
+
+    const task2DueDate = new Date(startDate);
+    task2DueDate.setDate(task2DueDate.getDate() - 5); // 5 days before campaign start
+
+    const task3DueDate = new Date(startDate);
+    task3DueDate.setDate(task3DueDate.getDate() - 3); // 3 days before campaign start
+
+    const task4DueDate = new Date(startDate);
+    task4DueDate.setDate(
+      task4DueDate.getDate() + Math.floor(campaignDuration / 2),
+    ); // Mid-campaign
+
+    const task5DueDate = new Date(endDate);
+    task5DueDate.setDate(task5DueDate.getDate() + 3); // 3 days after campaign end
+
+    const defaultTasks = [
+      {
+        name: 'Define Campaign Strategy & Objectives',
+        description: `Finalize the campaign strategy for "${campaign.name}". Review target audience, key messages, and success metrics. Ensure alignment with the ${campaign.goal} goal.`,
+        related_campaign_id: campaign.id,
+        status: TaskStatus.TODO,
+        priority: Priority.HIGH,
+        due_date: task1DueDate.toISOString(),
+      },
+      {
+        name: 'Create & Review Creative Assets',
+        description: `Design and prepare all creative materials for "${campaign.name}". This includes ad copy, visuals, videos, and any other campaign assets. Ensure they align with brand guidelines.`,
+        related_campaign_id: campaign.id,
+        status: TaskStatus.TODO,
+        priority: Priority.HIGH,
+        due_date: task2DueDate.toISOString(),
+      },
+      {
+        name: 'Set Up Campaign Tracking & Analytics',
+        description: `Configure tracking pixels, UTM parameters, and analytics tools for "${campaign.name}". Verify that all conversion tracking is properly implemented before launch.`,
+        related_campaign_id: campaign.id,
+        status: TaskStatus.TODO,
+        priority: Priority.MEDIUM,
+        due_date: task3DueDate.toISOString(),
+      },
+      {
+        name: 'Monitor Campaign Performance & Optimize',
+        description: `Review performance metrics for "${campaign.name}" at mid-campaign. Analyze impressions, reach, engagement, and conversions. Make data-driven optimizations to improve results.`,
+        related_campaign_id: campaign.id,
+        status: TaskStatus.TODO,
+        priority: Priority.MEDIUM,
+        due_date: task4DueDate.toISOString(),
+      },
+      {
+        name: 'Generate Campaign Report & Insights',
+        description: `Complete the post-campaign analysis for "${campaign.name}". Document key learnings, ROI, and recommendations for future campaigns. Share findings with stakeholders.`,
+        related_campaign_id: campaign.id,
+        status: TaskStatus.TODO,
+        priority: Priority.LOW,
+        due_date: task5DueDate.toISOString(),
+      },
+    ];
+
+    // Create all tasks
+    for (const taskData of defaultTasks) {
+      try {
+        await this.taskService.create(taskData as any, organization_id);
+      } catch (error) {
+        // Log error but don't fail campaign creation if task creation fails
+        console.error(
+          `Failed to create task "${taskData.name}" for campaign ${campaign.id}:`,
+          error,
+        );
+      }
+    }
   }
 
   private mapSelectedGoal(input?: string): string {
