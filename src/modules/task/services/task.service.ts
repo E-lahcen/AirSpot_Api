@@ -16,13 +16,20 @@ export class TaskService {
     const taskRepository = await this.tenantConnection.getRepository(Task);
 
     const taskData = {
-      ...createTaskDto,
+      name: createTaskDto.name,
+      description: createTaskDto.description || '',
       organization_id,
-      due_date: new Date(createTaskDto.due_date),
+      related_campaign_id: createTaskDto.related_campaign_id || null,
+      related_creative_id: createTaskDto.related_creative_id || null,
+      assigned_user_id: createTaskDto.assigned_user_id || null,
+      status: createTaskDto.status || TaskStatus.TODO,
+      priority: createTaskDto.priority || Priority.MEDIUM,
+      due_date: createTaskDto.due_date
+        ? new Date(createTaskDto.due_date)
+        : null,
       last_updated: createTaskDto.last_updated
         ? new Date(createTaskDto.last_updated)
         : new Date(),
-      assigned_user_id: createTaskDto.assigned_user_id || null,
     };
 
     const task = taskRepository.create(taskData);

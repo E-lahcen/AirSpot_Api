@@ -15,13 +15,13 @@ export class CreateTaskDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Task description',
     example: 'Review all creative assets for the new campaign',
   })
   @IsString()
-  @IsNotEmpty()
-  description: string;
+  @IsOptional()
+  description?: string;
 
   @ApiPropertyOptional({
     description: 'Related campaign ID (optional)',
@@ -47,28 +47,31 @@ export class CreateTaskDto {
   @IsOptional()
   assigned_user_id?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Task status',
     enum: TaskStatus,
     example: TaskStatus.TODO,
   })
   @IsEnum(TaskStatus)
-  status: TaskStatus;
+  @IsOptional()
+  status?: TaskStatus;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Task priority',
     enum: Priority,
     example: Priority.MEDIUM,
   })
   @IsEnum(Priority)
-  priority: Priority;
+  @IsOptional()
+  priority?: Priority;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Due date (ISO 8601 format)',
     example: '2025-12-31',
   })
   @IsDateString()
-  due_date: string;
+  @IsOptional()
+  due_date?: string;
 
   @ApiPropertyOptional({
     description: 'Last updated timestamp (ISO 8601 format)',

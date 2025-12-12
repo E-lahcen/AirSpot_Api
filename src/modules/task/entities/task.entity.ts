@@ -50,8 +50,8 @@ export class Task extends BaseEntity {
   })
   priority: Priority;
 
-  @Column({ type: 'date' })
-  due_date: Date;
+  @Column({ type: 'date', nullable: true })
+  due_date: Date | null;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   last_updated: Date;
