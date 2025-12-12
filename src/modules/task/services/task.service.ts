@@ -19,17 +19,31 @@ export class TaskService {
       name: createTaskDto.name,
       description: createTaskDto.description || '',
       organization_id,
-      related_campaign_id: createTaskDto.related_campaign_id || null,
-      related_creative_id: createTaskDto.related_creative_id || null,
-      assigned_user_id: createTaskDto.assigned_user_id || null,
+      related_campaign_id:
+        createTaskDto.related_campaign_id &&
+        createTaskDto.related_campaign_id.trim() !== ''
+          ? createTaskDto.related_campaign_id
+          : null,
+      related_creative_id:
+        createTaskDto.related_creative_id &&
+        createTaskDto.related_creative_id.trim() !== ''
+          ? createTaskDto.related_creative_id
+          : null,
+      assigned_user_id:
+        createTaskDto.assigned_user_id &&
+        createTaskDto.assigned_user_id.trim() !== ''
+          ? createTaskDto.assigned_user_id
+          : null,
       status: createTaskDto.status || TaskStatus.TODO,
       priority: createTaskDto.priority || Priority.MEDIUM,
-      due_date: createTaskDto.due_date
-        ? new Date(createTaskDto.due_date)
-        : null,
-      last_updated: createTaskDto.last_updated
-        ? new Date(createTaskDto.last_updated)
-        : new Date(),
+      due_date:
+        createTaskDto.due_date && createTaskDto.due_date.trim() !== ''
+          ? new Date(createTaskDto.due_date)
+          : null,
+      last_updated:
+        createTaskDto.last_updated && createTaskDto.last_updated.trim() !== ''
+          ? new Date(createTaskDto.last_updated)
+          : new Date(),
     };
 
     const task = taskRepository.create(taskData);

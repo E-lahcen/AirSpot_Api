@@ -272,7 +272,7 @@ export class CampaignService {
     // Create all tasks
     for (const taskData of defaultTasks) {
       try {
-        await this.taskService.create(taskData as any, organization_id);
+        await this.taskService.create(taskData, organization_id);
       } catch (error) {
         // Log error but don't fail campaign creation if task creation fails
         console.error(

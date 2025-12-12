@@ -875,4 +875,46 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       await queryRunner.query(`DROP TYPE "${schema}"."task_status_enum"`);
     },
   },
+  {
+    version: 1765400000000,
+    name: 'MakeTaskFieldsOptional',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Make description nullable with default empty string
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."tasks" 
+        ALTER COLUMN "description" DROP NOT NULL,
+        ALTER COLUMN "description" SET DEFAULT ''
+      `);
+
+      // Make due_date nullable
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."tasks" 
+        ALTER COLUMN "due_date" DROP NOT NULL
+      `);
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Revert due_date to NOT NULL (set a default date first for existing nulls)
+      await queryRunner.query(`
+        UPDATE "${schema}"."tasks" 
+        SET "due_date" = CURRENT_DATE + INTERVAL '7 days'
+        WHERE "due_date" IS NULL
+      `);
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."tasks" 
+        ALTER COLUMN "due_date" SET NOT NULL
+      `);
+
+      // Revert description to NOT NULL (set empty string for existing nulls)
+      await queryRunner.query(`
+        UPDATE "${schema}"."tasks" 
+        SET "description" = ''
+        WHERE "description" IS NULL
+      `);
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."tasks" 
+        ALTER COLUMN "description" SET NOT NULL,
+        ALTER COLUMN "description" DROP DEFAULT
+      `);
+    },
+  },
 ];

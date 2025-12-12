@@ -24,7 +24,7 @@ export class Task extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true, default: '' })
   description: string;
 
   @Column({ type: 'uuid', nullable: true })

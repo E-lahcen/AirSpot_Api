@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsUUID,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { TaskStatus, Priority } from '../entities/task.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -19,6 +20,9 @@ export class CreateTaskDto {
     description: 'Task description',
     example: 'Review all creative assets for the new campaign',
   })
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   @IsString()
   @IsOptional()
   description?: string;
@@ -27,6 +31,9 @@ export class CreateTaskDto {
     description: 'Related campaign ID (optional)',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   @IsUUID()
   @IsOptional()
   related_campaign_id?: string;
@@ -35,6 +42,9 @@ export class CreateTaskDto {
     description: 'Related creative ID (optional)',
     example: '123e4567-e89b-12d3-a456-426614174001',
   })
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   @IsUUID()
   @IsOptional()
   related_creative_id?: string;
@@ -43,6 +53,9 @@ export class CreateTaskDto {
     description: 'Assigned user ID (optional)',
     example: '123e4567-e89b-12d3-a456-426614174002',
   })
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   @IsUUID()
   @IsOptional()
   assigned_user_id?: string;
@@ -69,6 +82,9 @@ export class CreateTaskDto {
     description: 'Due date (ISO 8601 format)',
     example: '2025-12-31',
   })
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   @IsDateString()
   @IsOptional()
   due_date?: string;
@@ -77,6 +93,9 @@ export class CreateTaskDto {
     description: 'Last updated timestamp (ISO 8601 format)',
     example: '2025-12-12T10:30:00.000Z',
   })
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   @IsDateString()
   @IsOptional()
   last_updated?: string;
