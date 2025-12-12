@@ -202,29 +202,24 @@ export class CampaignService {
     campaign: Campaign,
     organization_id: string,
   ): Promise<void> {
-    const startDate = new Date(campaign.start_date);
-    const endDate = new Date(campaign.end_date);
-    const campaignDuration = Math.ceil(
-      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-    );
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
 
-    // Calculate task due dates based on campaign timeline
-    const task1DueDate = new Date(startDate);
-    task1DueDate.setDate(task1DueDate.getDate() - 7); // 7 days before campaign start
+    // Calculate task due dates starting from today with progressive intervals
+    const task1DueDate = new Date(today);
+    task1DueDate.setDate(task1DueDate.getDate() + 2); // 2 days from today
 
-    const task2DueDate = new Date(startDate);
-    task2DueDate.setDate(task2DueDate.getDate() - 5); // 5 days before campaign start
+    const task2DueDate = new Date(today);
+    task2DueDate.setDate(task2DueDate.getDate() + 5); // 5 days from today
 
-    const task3DueDate = new Date(startDate);
-    task3DueDate.setDate(task3DueDate.getDate() - 3); // 3 days before campaign start
+    const task3DueDate = new Date(today);
+    task3DueDate.setDate(task3DueDate.getDate() + 8); // 8 days from today
 
-    const task4DueDate = new Date(startDate);
-    task4DueDate.setDate(
-      task4DueDate.getDate() + Math.floor(campaignDuration / 2),
-    ); // Mid-campaign
+    const task4DueDate = new Date(today);
+    task4DueDate.setDate(task4DueDate.getDate() + 15); // 15 days from today
 
-    const task5DueDate = new Date(endDate);
-    task5DueDate.setDate(task5DueDate.getDate() + 3); // 3 days after campaign end
+    const task5DueDate = new Date(today);
+    task5DueDate.setDate(task5DueDate.getDate() + 30); // 30 days from today
 
     const defaultTasks = [
       {
