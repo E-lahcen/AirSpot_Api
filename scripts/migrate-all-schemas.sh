@@ -59,34 +59,34 @@ echo ""
 
 # Create extension in database before any migrations
 cat > /tmp/ensure-uuid-extension.js << 'EXTENSION_EOF'
-const { Client } = require('pg');
+const { DataSource } = require('typeorm');
 
 async function ensureUuidExtension() {
-  const client = new Client({
+  const dataSource = new DataSource({
+    type: 'postgres',
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT || '5432', 10),
-    user: process.env.DB_USERNAME,
+    username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
   });
 
   try {
-    await client.connect();
+    await dataSource.initialize();
     console.log('Creating uuid-ossp extension if not exists...');
-    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    await dataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
     console.log('✓ uuid-ossp extension is available');
+    await dataSource.destroy();
   } catch (error) {
     console.error('Error ensuring uuid-ossp extension:', error.message);
     process.exit(1);
-  } finally {
-    await client.end();
   }
 }
 
 ensureUuidExtension();
 EXTENSION_EOF
 
-$NODE_CMD /tmp/ensure-uuid-extension.js
+NODE_PATH="${NODE_PATH:-/app/node_modules}" $NODE_CMD /tmp/ensure-uuid-extension.js
 rm /tmp/ensure-uuid-extension.js
 
 echo ""
