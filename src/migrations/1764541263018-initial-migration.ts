@@ -4,6 +4,9 @@ export class InitialMigration1764541263018 implements MigrationInterface {
   name = 'InitialMigration1764541263018';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Ensure uuid-ossp extension is available
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
     await queryRunner.query(
       `CREATE TABLE "tenants" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "slug" character varying(100) NOT NULL, "company_name" character varying(255) NOT NULL, "schema_name" character varying(100) NOT NULL, "is_active" boolean NOT NULL DEFAULT true, "owner_email" character varying(255) NOT NULL, "owner_id" uuid, "created_by" character varying(255), "members_count" integer NOT NULL DEFAULT '0', "description" text, "logo" text, "region" character varying(100), "default_role" character varying(50), "enforce_domain" boolean NOT NULL DEFAULT false, "domain" character varying(255), "firebase_tenant_id" character varying(128), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_2310ecc5cb8be427097154b18fc" UNIQUE ("slug"), CONSTRAINT "UQ_c2a961556326eec0e3b19f3ced5" UNIQUE ("schema_name"), CONSTRAINT "UQ_0412ae68322ab2f0b5830531117" UNIQUE ("firebase_tenant_id"), CONSTRAINT "PK_53be67a04681c66b87ee27c9321" PRIMARY KEY ("id"))`,
     );

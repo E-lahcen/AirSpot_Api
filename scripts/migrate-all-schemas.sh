@@ -53,7 +53,45 @@ fi
 
 echo ""
 echo "=========================================="
-echo "  STEP 1: Public Schema Migration"
+echo "  STEP 1: Ensure UUID Extension"
+echo "=========================================="
+echo ""
+
+# Create extension in database before any migrations
+cat > /tmp/ensure-uuid-extension.js << 'EXTENSION_EOF'
+const { Client } = require('pg');
+
+async function ensureUuidExtension() {
+  const client = new Client({
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+  });
+
+  try {
+    await client.connect();
+    console.log('Creating uuid-ossp extension if not exists...');
+    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    console.log('✓ uuid-ossp extension is available');
+  } catch (error) {
+    console.error('Error ensuring uuid-ossp extension:', error.message);
+    process.exit(1);
+  } finally {
+    await client.end();
+  }
+}
+
+ensureUuidExtension();
+EXTENSION_EOF
+
+$NODE_CMD /tmp/ensure-uuid-extension.js
+rm /tmp/ensure-uuid-extension.js
+
+echo ""
+echo "=========================================="
+echo "  STEP 2: Public Schema Migration"
 echo "=========================================="
 echo ""
 
@@ -65,7 +103,7 @@ echo "✓ Public schema migrations completed!"
 
 echo ""
 echo "=========================================="
-echo "  STEP 2: Tenant Schemas Migration"
+echo "  STEP 3: Tenant Schemas Migration"
 echo "=========================================="
 echo ""
 
