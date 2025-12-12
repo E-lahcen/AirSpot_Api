@@ -26,6 +26,8 @@ import { OrganisationModule } from './modules/organisation/organisation.module';
 import { UserTenantModule } from './modules/user-tenant/user-tenant.module';
 import { InvitationModule } from './modules/invitation/invitation.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { TaskModule } from './modules/task/task.module';
+import { TaskTemplateModule } from './modules/task-template/task-template.module';
 
 @Module({
   imports: [
@@ -47,6 +49,8 @@ import { StorageModule } from './modules/storage/storage.module';
     OrganisationModule,
     InvitationModule,
     StorageModule,
+    TaskModule,
+    TaskTemplateModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

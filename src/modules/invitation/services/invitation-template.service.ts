@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { Invitation, InvitationType } from "../entities/invitation.entity";
-import { SendEmailDto } from "@app/modules/notification/dtos/send-email.dto";
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Invitation, InvitationType } from '../entities/invitation.entity';
+import { SendEmailDto } from '@app/modules/notification/dtos/send-email.dto';
 
 @Injectable()
 export class InvitationTemplateService {
@@ -9,7 +9,8 @@ export class InvitationTemplateService {
 
   generateInvitationEmail(invitation: Invitation): SendEmailDto {
     const frontendUrl =
-      this.configService.get<string>("FRONTEND_URL") || "http://localhost:3001";
+      this.configService.get<string>('FRONTEND_URL') ||
+      'https://app-v3.myairspot-staging.com';
     const acceptUrl = `${frontendUrl}/accept-invitation?token=${invitation.token}&slug=${invitation.tenant_slug}&type=${invitation.type}`;
 
     switch (invitation.type) {
@@ -33,10 +34,10 @@ export class InvitationTemplateService {
   ): SendEmailDto {
     const invitorName = invitation.invitor
       ? invitation.invitor.full_name || invitation.invitor.email
-      : "A team member";
+      : 'A team member';
     const companyName =
-      (invitation.metadata?.company_name as string) || "the team";
-    const roleName = invitation.role?.name || "member";
+      (invitation.metadata?.company_name as string) || 'the team';
+    const roleName = invitation.role?.name || 'member';
 
     return {
       recipient: invitation.email,
@@ -76,7 +77,7 @@ export class InvitationTemplateService {
               </p>
               
               <p style="margin: 0 0 30px; color: #666666; font-size: 14px; line-height: 1.6;">
-                Click the button below to accept your invitation and create your account. This invitation will expire on <strong>${new Date(invitation.expires_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</strong>.
+                Click the button below to accept your invitation and create your account. This invitation will expire on <strong>${new Date(invitation.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>.
               </p>
               
               <!-- CTA Button -->
@@ -127,9 +128,9 @@ export class InvitationTemplateService {
   ): SendEmailDto {
     const invitorName = invitation.invitor
       ? invitation.invitor.full_name || invitation.invitor.email
-      : "A team member";
+      : 'A team member';
     const projectName =
-      (invitation.metadata?.project_name as string) || "a project";
+      (invitation.metadata?.project_name as string) || 'a project';
 
     return {
       recipient: invitation.email,
@@ -169,7 +170,7 @@ export class InvitationTemplateService {
               </p>
               
               <p style="margin: 0 0 30px; color: #666666; font-size: 14px; line-height: 1.6;">
-                Accept the invitation to start working together. This invitation expires on <strong>${new Date(invitation.expires_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</strong>.
+                Accept the invitation to start working together. This invitation expires on <strong>${new Date(invitation.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>.
               </p>
               
               <!-- CTA Button -->
@@ -217,8 +218,8 @@ export class InvitationTemplateService {
   ): SendEmailDto {
     const invitorName = invitation.invitor
       ? invitation.invitor.full_name || invitation.invitor.email
-      : "An administrator";
-    const newRole = invitation.role?.name || "a new role";
+      : 'An administrator';
+    const newRole = invitation.role?.name || 'a new role';
 
     return {
       recipient: invitation.email,
@@ -258,7 +259,7 @@ export class InvitationTemplateService {
               </p>
               
               <p style="margin: 0 0 30px; color: #666666; font-size: 14px; line-height: 1.6;">
-                Click the button below to accept this role change and continue. This invitation expires on <strong>${new Date(invitation.expires_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</strong>.
+                Click the button below to accept this role change and continue. This invitation expires on <strong>${new Date(invitation.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>.
               </p>
               
               <!-- CTA Button -->
@@ -306,11 +307,11 @@ export class InvitationTemplateService {
   ): SendEmailDto {
     const invitorName = invitation.invitor
       ? invitation.invitor.full_name || invitation.invitor.email
-      : "Someone";
+      : 'Someone';
 
     return {
       recipient: invitation.email,
-      subject: "You have a new invitation",
+      subject: 'You have a new invitation',
       message: `You have received a new invitation.`,
       html: `
 <!DOCTYPE html>
@@ -346,7 +347,7 @@ export class InvitationTemplateService {
               </p>
               
               <p style="margin: 0 0 30px; color: #666666; font-size: 14px; line-height: 1.6;">
-                Click the button below to accept. This invitation expires on <strong>${new Date(invitation.expires_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</strong>.
+                Click the button below to accept. This invitation expires on <strong>${new Date(invitation.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>.
               </p>
               
               <!-- CTA Button -->

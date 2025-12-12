@@ -2,6 +2,7 @@ import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { AdVariation } from '../../ad-variation/entities/ad-variation.entity';
 import { BaseEntity } from '@app/common/entities/base.entity';
 import { User } from '@app/modules/user/entities/user.entity';
+import { Task } from '../../task/entities/task.entity';
 
 export enum CampaignGoal {
   AWARENESS = 'AWARENESS',
@@ -115,4 +116,7 @@ export class Campaign extends BaseEntity {
 
   @OneToMany(() => AdVariation, (variation) => variation.campaign)
   ad_variations: AdVariation[];
+
+  @OneToMany(() => Task, (task) => task.campaign)
+  tasks: Task[];
 }

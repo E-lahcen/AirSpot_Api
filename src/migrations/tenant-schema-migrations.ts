@@ -711,4 +711,162 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       );
     },
   },
+  {
+    version: 1733999000000,
+    name: 'AddTasksAndTaskTemplates',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Create task status enum
+      await queryRunner.query(`
+        DO $$ BEGIN
+          CREATE TYPE "${schema}"."task_status_enum" AS ENUM ('To Do', 'In Progress', 'Completed');
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+
+      // Create priority enum
+      await queryRunner.query(`
+        DO $$ BEGIN
+          CREATE TYPE "${schema}"."priority_enum" AS ENUM ('Low', 'Medium', 'High');
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+
+      // Create task type enum
+      await queryRunner.query(`
+        DO $$ BEGIN
+          CREATE TYPE "${schema}"."task_type_enum" AS ENUM ('Campaign', 'Creative');
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+
+      // Create tasks table
+      await queryRunner.query(`
+        CREATE TABLE "${schema}"."tasks" (
+          "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+          "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "deleted_at" TIMESTAMP,
+          "organization_id" uuid NOT NULL,
+          "name" character varying(255) NOT NULL,
+          "description" text NOT NULL,
+          "related_campaign_id" uuid,
+          "related_creative_id" uuid,
+          "assigned_user_id" uuid NOT NULL,
+          "status" "${schema}"."task_status_enum" NOT NULL DEFAULT 'To Do',
+          "priority" "${schema}"."priority_enum" NOT NULL DEFAULT 'Medium',
+          "due_date" date NOT NULL,
+          "last_updated" TIMESTAMP NOT NULL DEFAULT now(),
+          CONSTRAINT "PK_tasks_id" PRIMARY KEY ("id")
+        )
+      `);
+
+      // Create task_templates table
+      await queryRunner.query(`
+        CREATE TABLE "${schema}"."task_templates" (
+          "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+          "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "deleted_at" TIMESTAMP,
+          "organization_id" uuid NOT NULL,
+          "name" character varying(255) NOT NULL,
+          "task_type" "${schema}"."task_type_enum" NOT NULL,
+          "tasks" jsonb NOT NULL,
+          CONSTRAINT "PK_task_templates_id" PRIMARY KEY ("id")
+        )
+      `);
+
+      // Create indexes
+      await queryRunner.query(`
+        CREATE INDEX "IDX_tasks_organization_id" ON "${schema}"."tasks" ("organization_id")
+      `);
+      await queryRunner.query(`
+        CREATE INDEX "IDX_tasks_assigned_user_id" ON "${schema}"."tasks" ("assigned_user_id")
+      `);
+      await queryRunner.query(`
+        CREATE INDEX "IDX_tasks_related_campaign_id" ON "${schema}"."tasks" ("related_campaign_id")
+      `);
+      await queryRunner.query(`
+        CREATE INDEX "IDX_tasks_related_creative_id" ON "${schema}"."tasks" ("related_creative_id")
+      `);
+      await queryRunner.query(`
+        CREATE INDEX "IDX_tasks_status" ON "${schema}"."tasks" ("status")
+      `);
+      await queryRunner.query(`
+        CREATE INDEX "IDX_tasks_due_date" ON "${schema}"."tasks" ("due_date")
+      `);
+      await queryRunner.query(`
+        CREATE INDEX "IDX_task_templates_organization_id" ON "${schema}"."task_templates" ("organization_id")
+      `);
+
+      // Add foreign key constraints
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."tasks"
+        ADD CONSTRAINT "FK_tasks_campaign"
+        FOREIGN KEY ("related_campaign_id")
+        REFERENCES "${schema}"."campaigns"("id")
+        ON DELETE SET NULL
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."tasks"
+        ADD CONSTRAINT "FK_tasks_creative"
+        FOREIGN KEY ("related_creative_id")
+        REFERENCES "${schema}"."creatives"("id")
+        ON DELETE SET NULL
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."tasks"
+        ADD CONSTRAINT "FK_tasks_user"
+        FOREIGN KEY ("assigned_user_id")
+        REFERENCES "${schema}"."users"("id")
+        ON DELETE CASCADE
+      `);
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop foreign key constraints
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."tasks" DROP CONSTRAINT "FK_tasks_user"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."tasks" DROP CONSTRAINT "FK_tasks_creative"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${schema}"."tasks" DROP CONSTRAINT "FK_tasks_campaign"`,
+      );
+
+      // Drop indexes
+      await queryRunner.query(
+        `DROP INDEX "${schema}"."IDX_task_templates_organization_id"`,
+      );
+      await queryRunner.query(
+        `DROP INDEX "${schema}"."IDX_tasks_due_date"`,
+      );
+      await queryRunner.query(`DROP INDEX "${schema}"."IDX_tasks_status"`);
+      await queryRunner.query(
+        `DROP INDEX "${schema}"."IDX_tasks_related_creative_id"`,
+      );
+      await queryRunner.query(
+        `DROP INDEX "${schema}"."IDX_tasks_related_campaign_id"`,
+      );
+      await queryRunner.query(
+        `DROP INDEX "${schema}"."IDX_tasks_assigned_user_id"`,
+      );
+      await queryRunner.query(
+        `DROP INDEX "${schema}"."IDX_tasks_organization_id"`,
+      );
+
+      // Drop tables
+      await queryRunner.query(`DROP TABLE "${schema}"."task_templates"`);
+      await queryRunner.query(`DROP TABLE "${schema}"."tasks"`);
+
+      // Drop enums
+      await queryRunner.query(`DROP TYPE "${schema}"."task_type_enum"`);
+      await queryRunner.query(`DROP TYPE "${schema}"."priority_enum"`);
+      await queryRunner.query(`DROP TYPE "${schema}"."task_status_enum"`);
+    },
+  },
 ];

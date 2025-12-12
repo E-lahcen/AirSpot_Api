@@ -2,6 +2,7 @@ import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { AdVariation } from '../../ad-variation/entities/ad-variation.entity';
 import { BaseEntity } from '@app/common/entities/base.entity';
 import { User } from '@app/modules/user/entities/user.entity';
+import { Task } from '../../task/entities/task.entity';
 
 @Entity('creatives')
 export class Creative extends BaseEntity {
@@ -69,4 +70,7 @@ export class Creative extends BaseEntity {
 
   @OneToMany(() => AdVariation, (variation) => variation.creative)
   ad_variations: AdVariation[];
+
+  @OneToMany(() => Task, (task) => task.creative)
+  tasks: Task[];
 }
