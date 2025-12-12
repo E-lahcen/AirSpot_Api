@@ -218,6 +218,9 @@ async function applyMigrationsToTenantSchemas() {
           const queryRunner = dataSource.createQueryRunner();
           await queryRunner.connect();
           
+          // Ensure uuid-ossp extension is available (needs to be created in public schema)
+          await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+          
           // Set search path to tenant schema
           await queryRunner.query(`SET search_path TO "${schema}"`);
 
