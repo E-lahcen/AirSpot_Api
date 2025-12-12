@@ -259,8 +259,8 @@ async function applyMigrationsToTenantSchemas() {
           // Ensure uuid-ossp extension is available (needs to be created in public schema)
           await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
           
-          // Set search path to tenant schema
-          await queryRunner.query(`SET search_path TO "${schema}"`);
+          // Set search path to tenant schema, but keep public for extensions
+          await queryRunner.query(`SET search_path TO "${schema}", public`);
 
           try {
             // Intercept queries to filter out public-only tables and handle CREATE IF NOT EXISTS
