@@ -70,6 +70,9 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
     version: 1764541263018,
     name: 'InitialMigration',
     up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Ensure uuid-ossp extension is available first
+      await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
       // Create roles table
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS "${schema}".roles (
