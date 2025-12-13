@@ -3,6 +3,7 @@ import {
   NestMiddleware,
   BadRequestException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { TenantService } from '../services/tenant.service';
@@ -55,6 +56,18 @@ export class TenantMiddleware implements NestMiddleware {
           {
             code: 'TENANT_NOT_FOUND',
             message: `No tenant found with slug: ${slug}`,
+          },
+        ],
+      });
+    }
+
+    if (!tenant.is_active) {
+      throw new UnauthorizedException({
+        message: 'Tenant is inactive',
+        errors: [
+          {
+            code: 'TENANT_INACTIVE',
+            message: 'This tenant account has been deactivated',
           },
         ],
       });

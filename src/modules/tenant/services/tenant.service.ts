@@ -9,12 +9,19 @@ export class TenantService {
   private firebaseTenantId: string | null = null;
   private tenantId: string | null = null;
 
-   setTenant(tenant: Tenant): void {
+  private tenant: Tenant | null = null;
+
+  setTenant(tenant: Tenant): void {
+    this.tenant = tenant;
     this.slug = tenant.slug;
     this.firebaseTenantId = tenant.firebase_tenant_id || null;
     this.tenantId = tenant.id || null;
     // Convert slug to schema name (replace hyphens with underscores for PostgreSQL)
     this.schema = `tenant_${tenant.slug.replace(/-/g, '_')}`;
+  }
+
+  getTenant(): Tenant | null {
+    return this.tenant;
   }
 
   getSlug(): string | null {

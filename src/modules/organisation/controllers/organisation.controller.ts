@@ -6,10 +6,12 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Patch,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
+import { UpdateOrganizationStatusDto } from '../dto/update-organization-status.dto';
 import { AuthenticatedUser, CurrentUser } from '@app/modules/auth/decorators';
 import { OrganisationService } from '../services/organisation.service';
 import { AuthGuard } from '@app/modules/auth/guards';
@@ -39,7 +41,7 @@ export class OrganisationController {
     status: 200,
     description: 'List of organizations retrieved successfully',
   })
-  @Roles('owner', 'admin')
+  @Roles('super_admin', 'owner', 'admin')
   async getAllOrganizations() {
     console.log('Fetching all organizations');
     return this.organisationService.findAllOrganizations();
@@ -57,5 +59,19 @@ export class OrganisationController {
   ) {
     console.log(`Fetching organizations for owner: ${userId}`);
     return this.organisationService.findOrganizationsByOwner(userId);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update organization status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Organization status updated successfully',
+  })
+  @Roles('super_admin')
+  async updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateOrganizationStatusDto,
+  ) {
+    return this.organisationService.updateStatus(id, dto.status);
   }
 }

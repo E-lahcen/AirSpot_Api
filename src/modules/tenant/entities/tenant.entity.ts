@@ -62,6 +62,13 @@ export class Tenant {
   })
   firebase_tenant_id: string;
 
+  @Column({
+    type: 'enum',
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+  })
+  status: 'pending' | 'approved' | 'rejected';
+
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 

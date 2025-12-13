@@ -59,10 +59,6 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('Tenant context not found');
       }
 
-      console.log(
-        `Verifying token for tenant slug: ${slug}, Firebase tenant ID: ${firebaseTenantId}`,
-      );
-
       // Get tenant-specific Firebase Auth instance using Firebase tenant ID
       const tenantAuth = this.auth
         .tenantManager()
@@ -89,6 +85,26 @@ export class AuthGuard implements CanActivate {
         tenantId: customClaims.tenantId,
         slug: customClaims.slug,
       };
+
+      // Check tenant status
+      const tenant = this.tenantService.getTenant();
+      if (tenant && tenant.status !== 'approved') {
+        const isSuperAdmin = user.roles?.some(
+          (role) => role.name === 'super_admin',
+        );
+
+        if (!isSuperAdmin) {
+          throw new UnauthorizedException({
+            message: 'Tenant verification pending',
+            errors: [
+              {
+                code: 'TENANT_NOT_APPROVED',
+                message: `Your organization is currently ${tenant.status}. Please contact support.`,
+              },
+            ],
+          });
+        }
+      }
 
       return true;
     } catch (error) {

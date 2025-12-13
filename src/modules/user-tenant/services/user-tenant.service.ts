@@ -97,4 +97,22 @@ export class UserTenantService {
       where: { tenant_id: tenantId },
     });
   }
+
+  async findTenantsByEmail(email: string) {
+    const userTenants = await this.userTenantRepository.find({
+      where: { email },
+      relations: ['tenant'],
+    });
+
+    if (!userTenants || userTenants.length === 0) {
+      throw new NotFoundException(`No tenants found for email: ${email}`);
+    }
+
+    // Return only public tenant information
+    return userTenants.map((userTenant) => ({
+      slug: userTenant.tenant.slug,
+      company_name: userTenant.tenant.company_name,
+      logo: userTenant.tenant.logo,
+    }));
+  }
 }

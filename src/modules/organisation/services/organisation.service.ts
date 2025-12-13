@@ -64,4 +64,8 @@ export class OrganisationService {
   async findOrganizationsByOwner(userId: string) {
     return this.tenantManagementService.getTenantsByOwner(userId);
   }
+
+  async updateStatus(id: string, status: 'pending' | 'approved' | 'rejected') {
+    return this.tenantManagementService.updateTenantStatus(id, status);
+  }
 }
