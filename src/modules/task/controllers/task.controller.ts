@@ -19,18 +19,19 @@ import {
 } from '@nestjs/swagger';
 import { TaskService } from '../services/task.service';
 import { CreateTaskDto, UpdateTaskDto } from '../dto';
-import { AuthGuard } from '../../auth/guards';
-import { AuthenticatedUser, CurrentUser } from '../../auth/decorators';
+import { AuthGuard, RolesGuard } from '../../auth/guards';
+import { AuthenticatedUser, CurrentUser, Roles } from '../../auth/decorators';
 
 @ApiTags('tasks')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('tasks')
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new task' })
+  @Roles('super_admin', 'owner', 'admin')
   create(
     @Body() createTaskDto: CreateTaskDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -48,6 +49,7 @@ export class TaskController {
   @ApiQuery({ name: 'campaign_id', required: false, type: String })
   @ApiQuery({ name: 'creative_id', required: false, type: String })
   @ApiQuery({ name: 'assigned_user_id', required: false, type: String })
+  @Roles('super_admin', 'owner', 'admin')
   findAll(
     @CurrentUser() user: AuthenticatedUser,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -74,18 +76,21 @@ export class TaskController {
 
   @Get('statistics')
   @ApiOperation({ summary: 'Get task statistics' })
+  @Roles('super_admin', 'owner', 'admin')
   getStatistics(@CurrentUser() user: AuthenticatedUser) {
     return this.taskService.getStatistics(user.tenantId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a single task by ID' })
+  @Roles('super_admin', 'owner', 'admin')
   findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.taskService.findOne(id, user.tenantId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a task' })
+  @Roles('super_admin', 'owner', 'admin')
   update(
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
@@ -96,6 +101,7 @@ export class TaskController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a task' })
+  @Roles('super_admin', 'owner', 'admin')
   remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.taskService.remove(id, user.tenantId);
   }
