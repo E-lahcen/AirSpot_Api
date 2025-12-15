@@ -88,6 +88,9 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
 
+    // Enable graceful shutdown to properly close connections
+    app.enableShutdownHooks();
+
     const env =
       app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 

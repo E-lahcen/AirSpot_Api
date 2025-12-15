@@ -35,8 +35,17 @@ export class TenantConnectionService {
 
   async cleanup() {
     if (this.queryRunner) {
-      await this.queryRunner.release();
-      this.queryRunner = undefined;
+      try {
+        // Check if query runner is still connected before releasing
+        if (this.queryRunner.isReleased === false) {
+          await this.queryRunner.release();
+        }
+      } catch (error) {
+        // Log error but don't throw to avoid breaking the response
+        console.error('Error releasing query runner:', error);
+      } finally {
+        this.queryRunner = undefined;
+      }
     }
   }
 }

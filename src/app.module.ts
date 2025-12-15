@@ -4,6 +4,7 @@ import {
   NestModule,
   RequestMethod,
   Logger,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -28,6 +29,8 @@ import { InvitationModule } from './modules/invitation/invitation.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { TaskModule } from './modules/task/task.module';
 import { TaskTemplateModule } from './modules/task-template/task-template.module';
+import { TimeoutMiddleware } from './core/middlewares/timeout.middleware';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -51,6 +54,7 @@ import { TaskTemplateModule } from './modules/task-template/task-template.module
     StorageModule,
     TaskModule,
     TaskTemplateModule,
+    HealthModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -65,12 +69,22 @@ import { TaskTemplateModule } from './modules/task-template/task-template.module
         password: configService.get<string>('DB_PASSWORD'),
         synchronize: false,
         type: 'postgres',
-        cache: true,
+        cache: {
+          duration: 30000, // Cache for 30 seconds
+          ignoreErrors: true,
+        },
         autoLoadEntities: true,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/[0-9]*-*.{ts,js}'],
         migrationsRun: false,
         // Connection pool configuration to prevent connection exhaustion
+        extra: {
+          max: 20, // Maximum 20 connections in pool
+          min: 2, // Keep 2 connections always ready
+          idleTimeoutMillis: 30000, // Close idle connections after 30s
+          connectionTimeoutMillis: 5000, // Timeout acquiring connection after 5s
+          statement_timeout: 30000, // Kill queries running longer than 30s
+        },
         // Query timeout to prevent long-running queries from holding connections
         maxQueryExecutionTime: 10000, // Log queries that take longer than 10 seconds
       }),
@@ -80,12 +94,18 @@ import { TaskTemplateModule } from './modules/task-template/task-template.module
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule implements NestModule {
+export class AppModule implements NestModule, OnModuleDestroy {
   private readonly logger = new Logger(AppModule.name);
 
   constructor(
     private readonly tenantMigrationService: TenantMigrationService,
   ) {}
+
+  onModuleDestroy() {
+    this.logger.log('🔄 Shutting down gracefully...');
+    // TypeORM connections are automatically closed by NestJS
+    // This hook ensures proper cleanup order
+  }
 
   // async onModuleInit() {
   //   this.logger.log('🔄 Running tenant schema migrations on startup...');
@@ -127,10 +147,15 @@ export class AppModule implements NestModule {
   // }
 
   configure(consumer: MiddlewareConsumer) {
+    // Apply timeout middleware globally to prevent hanging requests
+    consumer.apply(TimeoutMiddleware).forRoutes('*');
+
     // Apply tenant middleware to all routes except health checks, docs, auth registration/login, and public template/video files
     consumer
       .apply(TenantMiddleware)
       .exclude(
+        { path: '/health', method: RequestMethod.ALL, version: '1' },
+        { path: '/health/db', method: RequestMethod.ALL, version: '1' },
         { path: '/docs/', method: RequestMethod.ALL },
         { path: '/auth/register', method: RequestMethod.POST, version: '1' },
         {
