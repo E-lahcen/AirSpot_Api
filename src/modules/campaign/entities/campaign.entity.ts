@@ -83,10 +83,10 @@ export class Campaign extends BaseEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   audience: {
-    locations: string[];
-    interests: string[];
-    demographics: number[];
-    genders: string[];
+    locations?: string[];
+    interests?: string[];
+    demographics?: number[];
+    genders?: string[];
   } | null;
 
   @Column('text', { array: true, nullable: true })

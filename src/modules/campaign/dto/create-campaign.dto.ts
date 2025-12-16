@@ -12,25 +12,29 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class AudienceDataDto {
-  @ApiProperty({ description: 'Locations', type: [String] })
+  @ApiPropertyOptional({ description: 'Locations', type: [String] })
   @IsArray()
   @IsString({ each: true })
-  locations: string[];
+  @IsOptional()
+  locations?: string[];
 
-  @ApiProperty({ description: 'Interests', type: [String] })
+  @ApiPropertyOptional({ description: 'Interests', type: [String] })
   @IsArray()
   @IsString({ each: true })
-  interests: string[];
+  @IsOptional()
+  interests?: string[];
 
-  @ApiProperty({ description: 'Demographics', type: [Number] })
+  @ApiPropertyOptional({ description: 'Demographics', type: [Number] })
   @IsArray()
   @IsNumber({}, { each: true })
-  demographics: number[];
+  @IsOptional()
+  demographics?: number[];
 
-  @ApiProperty({ description: 'Genders', type: [String] })
+  @ApiPropertyOptional({ description: 'Genders', type: [String] })
   @IsArray()
   @IsString({ each: true })
-  genders: string[];
+  @IsOptional()
+  genders?: string[];
 }
 
 export class CreateCampaignDto {
