@@ -51,6 +51,16 @@ export class TenantSetupService implements OnModuleInit {
     try {
       await queryRunner.connect();
 
+      // Ensure UUID extension is available database-wide before any operations
+      try {
+        await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+        this.logger.log('✓ UUID extension verified/created');
+      } catch {
+        this.logger.warn(
+          'UUID extension creation skipped (may already exist or lack permissions)',
+        );
+      }
+
       // // Create main tenants table in public schema
       // await queryRunner.query(`
       //   CREATE TABLE IF NOT EXISTS public.tenants (

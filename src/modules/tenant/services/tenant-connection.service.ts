@@ -21,8 +21,8 @@ export class TenantConnectionService {
     if (!this.queryRunner) {
       this.queryRunner = this.dataSource.createQueryRunner();
       await this.queryRunner.connect();
-      // Set the search_path to the tenant's schema
-      await this.queryRunner.query(`SET search_path TO "${schema}"`);
+      // Set the search_path to the tenant's schema with public as fallback for extensions
+      await this.queryRunner.query(`SET search_path TO "${schema}", public`);
     }
 
     return this.queryRunner.manager;
