@@ -226,25 +226,24 @@ export class AuthService {
     return { message: 'Verification code sent' };
   }
 
-  async register(dto: RegisterDto) {
-    // Step 0: Verify Email Code
+  async verifyEmail(email: string, code: string) {
     const verification = await this.emailVerificationRepository.findOne({
-      where: { email: dto.email },
+      where: { email },
     });
 
     if (!verification) {
       throw new BadRequestException({
-        message: 'Verification code required',
+        message: 'Verification code not found',
         errors: [
           {
-            code: 'VERIFICATION_REQUIRED',
+            code: 'VERIFICATION_NOT_FOUND',
             message: 'Please request a verification code first',
           },
         ],
       });
     }
 
-    if (verification.code !== dto.verification_code) {
+    if (verification.code !== code) {
       throw new BadRequestException({
         message: 'Invalid verification code',
         errors: [
@@ -262,7 +261,49 @@ export class AuthService {
         errors: [
           {
             code: 'CODE_EXPIRED',
-            message: 'The verification code has expired',
+            message:
+              'The verification code has expired. Please request a new one',
+          },
+        ],
+      });
+    }
+
+    if (verification.is_verified) {
+      return { message: 'Email already verified', verified: true };
+    }
+
+    verification.is_verified = true;
+    await this.emailVerificationRepository.save(verification);
+
+    return { message: 'Email verified successfully', verified: true };
+  }
+
+  async register(dto: RegisterDto) {
+    // Step 0: Check Email Verification Status
+    const verification = await this.emailVerificationRepository.findOne({
+      where: { email: dto.email },
+    });
+
+    if (!verification) {
+      throw new BadRequestException({
+        message: 'Email verification required',
+        errors: [
+          {
+            code: 'VERIFICATION_REQUIRED',
+            message: 'Please verify your email before registering',
+          },
+        ],
+      });
+    }
+
+    if (!verification.is_verified) {
+      throw new BadRequestException({
+        message: 'Email not verified',
+        errors: [
+          {
+            code: 'EMAIL_NOT_VERIFIED',
+            message:
+              'Please verify your email using the verification code before registering',
           },
         ],
       });

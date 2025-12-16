@@ -17,6 +17,7 @@ import {
 } from '../docs';
 
 import { SendVerificationDto } from '../dto/send-verification.dto';
+import { VerifyEmailDto } from '../dto/verify-email.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -28,6 +29,13 @@ export class AuthController {
   @ResponseMessage({ message: 'Verification code sent successfully' })
   async sendVerificationCode(@Body() dto: SendVerificationDto) {
     return this.authService.sendVerificationCode(dto);
+  }
+
+  @Post('verify-email')
+  @Public()
+  @ResponseMessage({ message: 'Email verified successfully' })
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.email, dto.code);
   }
 
   @Post('register')

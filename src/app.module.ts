@@ -165,7 +165,7 @@ export class AppModule implements NestModule, OnModuleDestroy {
         },
         { path: '/auth/login', method: RequestMethod.POST, version: '1' },
         {
-          path: '/auth/send-verification-code',
+          path: '/auth/verify-email',
           method: RequestMethod.POST,
           version: '1',
         },
