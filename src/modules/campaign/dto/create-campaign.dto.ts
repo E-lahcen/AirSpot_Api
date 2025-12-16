@@ -87,9 +87,10 @@ export class CreateCampaignDto {
   @IsString()
   biddingStrategy: string;
 
-  @ApiProperty({ description: 'Creative data', type: Object })
+  @ApiPropertyOptional({ description: 'Creative data', type: Object })
+  @IsOptional()
   @IsObject()
-  creativeData: Record<string, any>;
+  creativeData?: Record<string, any>;
 
   @ApiProperty({ description: 'Status' })
   @IsString()

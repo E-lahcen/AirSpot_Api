@@ -5,6 +5,7 @@ import { CreateAudienceDto, UpdateAudienceDto } from '../dto';
 import { FilterAudienceDto } from '../dto/filter-audience.dto';
 import { paginate, Pagination } from 'nestjs-typeorm-paginate';
 import { FindOptionsWhere } from 'typeorm';
+import { Campaign } from '../../campaign/entities/campaign.entity';
 
 @Injectable()
 export class AudienceService {
@@ -64,10 +65,25 @@ export class AudienceService {
       queryBuilder.where(where);
     }
 
-    return paginate<Audience>(queryBuilder, {
+    const paginatedResult = await paginate<Audience>(queryBuilder, {
       page: filterDto.page || 1,
       limit: filterDto.limit || 10,
     });
+
+    // Correct the campaign counts by querying actual campaigns
+    const campaignRepository =
+      await this.tenantConnection.getRepository(Campaign);
+
+    for (const audience of paginatedResult.items) {
+      const count = await campaignRepository
+        .createQueryBuilder('campaign')
+        .where('campaign.audience IS NOT NULL')
+        .getCount();
+
+      audience.campaigns = count;
+    }
+
+    return paginatedResult;
   }
 
   async findByVariation(variation_id: string): Promise<Audience[]> {
@@ -90,6 +106,16 @@ export class AudienceService {
     if (!audience) {
       throw new NotFoundException(`Audience with ID ${id} not found`);
     }
+
+    // Correct the campaign count
+    const campaignRepository =
+      await this.tenantConnection.getRepository(Campaign);
+    const count = await campaignRepository
+      .createQueryBuilder('campaign')
+      .where('campaign.audience IS NOT NULL')
+      .getCount();
+
+    audience.campaigns = count;
 
     return audience;
   }
