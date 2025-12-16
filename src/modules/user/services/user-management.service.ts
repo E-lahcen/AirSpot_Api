@@ -13,6 +13,7 @@ import {
   InvitationStatus,
 } from '@app/modules/invitation/entities/invitation.entity';
 import { Tenant } from '@app/modules/tenant/entities/tenant.entity';
+import { EmailService } from '@app/modules/notification/services/email.service';
 import {
   FilterUsersDto,
   UpdateUserStatusDto,
@@ -29,6 +30,7 @@ export class UserManagementService {
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
     private readonly dataSource: DataSource,
+    private readonly emailService: EmailService,
   ) {}
 
   async getAllUsers(filterDto: FilterUsersDto): Promise<any> {
@@ -308,6 +310,46 @@ export class UserManagementService {
       where: { id: tenant.id },
     });
 
+    // Send approval email to tenant owner
+    try {
+      await this.emailService.send({
+        recipient: tenant.owner_email,
+        subject: 'Your AirSpot Account Has Been Approved! 🎉',
+        message: `Congratulations! Your organization "${tenant.company_name}" has been approved and is now active on AirSpot.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #4CAF50;">🎉 Account Approved!</h2>
+            <p>Dear ${tenant.company_name} Team,</p>
+            <p>Great news! Your AirSpot account has been <strong>approved</strong> by our admin team.</p>
+            
+            <div style="background-color: #f8f9fa; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0;">
+              <h3 style="margin-top: 0;">Organization Details:</h3>
+              <p style="margin: 5px 0;"><strong>Company Name:</strong> ${tenant.company_name}</p>
+              <p style="margin: 5px 0;"><strong>Organization ID:</strong> ${tenant.slug}</p>
+              <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #4CAF50; font-weight: bold;">Approved</span></p>
+            </div>
+            
+            <p>You can now access all features of the AirSpot platform. Log in to your account to get started!</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL || 'https://app-v3.myairspot-staging.com'}" 
+                 style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Access Your Account
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">If you have any questions or need assistance, please don't hesitate to reach out to our support team.</p>
+            
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center;">AirSpot Team</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error('Failed to send approval email:', emailError);
+      // Don't fail the approval if email fails
+    }
+
     return {
       message: 'Tenant validated and approved successfully',
       tenant: {
@@ -349,6 +391,47 @@ export class UserManagementService {
     const updatedTenant = await this.tenantRepository.findOne({
       where: { id: tenant.id },
     });
+
+    // Send rejection email to tenant owner
+    try {
+      await this.emailService.send({
+        recipient: tenant.owner_email,
+        subject: 'Update on Your AirSpot Account Application',
+        message: `Unfortunately, your organization "${tenant.company_name}" application has not been approved at this time.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #f44336;">Account Application Update</h2>
+            <p>Dear ${tenant.company_name} Team,</p>
+            <p>Thank you for your interest in AirSpot. After careful review, we regret to inform you that your account application has not been approved at this time.</p>
+            
+            <div style="background-color: #f8f9fa; border-left: 4px solid #f44336; padding: 15px; margin: 20px 0;">
+              <h3 style="margin-top: 0;">Application Details:</h3>
+              <p style="margin: 5px 0;"><strong>Company Name:</strong> ${tenant.company_name}</p>
+              <p style="margin: 5px 0;"><strong>Organization ID:</strong> ${tenant.slug}</p>
+              <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #f44336; font-weight: bold;">Not Approved</span></p>
+              ${reason ? `<p style="margin: 15px 0 5px 0;"><strong>Reason:</strong></p><p style="margin: 5px 0; padding: 10px; background-color: #fff; border-radius: 4px;">${reason}</p>` : ''}
+            </div>
+            
+            <p>If you believe this decision was made in error or if you would like to discuss your application further, please feel free to contact our support team.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.SUPPORT_URL || 'mailto:support@airspot.com'}" 
+                 style="background-color: #2196F3; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Contact Support
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">We appreciate your understanding and interest in our platform.</p>
+            
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center;">AirSpot Team</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error('Failed to send rejection email:', emailError);
+      // Don't fail the rejection if email fails
+    }
 
     return {
       message: 'Tenant rejected successfully',
