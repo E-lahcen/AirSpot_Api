@@ -63,10 +63,11 @@ export class CreateCampaignDto {
   @IsString()
   budgetAmount: string;
 
-  @ApiProperty({ description: 'Audience data', type: AudienceDataDto })
+  @ApiPropertyOptional({ description: 'Audience data', type: AudienceDataDto })
   @ValidateNested()
   @Type(() => AudienceDataDto)
-  audience: AudienceDataDto;
+  @IsOptional()
+  audience?: AudienceDataDto;
 
   @ApiProperty({ description: 'Selected broadcast TV', type: [String] })
   @IsArray()
