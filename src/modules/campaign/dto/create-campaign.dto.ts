@@ -81,10 +81,13 @@ export class CreateCampaignDto {
   @Min(0)
   reach?: number;
 
-  @ApiPropertyOptional({ description: 'Spend', default: 0 })
-  @IsNumber()
+  @ApiPropertyOptional({
+    description: 'Spend',
+    type: 'number',
+    format: 'float',
+    default: 0,
+  })
   @IsOptional()
-  @Min(0)
   spend?: number;
 
   @ApiPropertyOptional({ description: 'ROI' })

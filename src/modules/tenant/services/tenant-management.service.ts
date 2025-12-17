@@ -191,6 +191,30 @@ export class TenantManagementService {
     return tenants;
   }
 
+  async updateTenant(id: string, updateData: Partial<Tenant>): Promise<Tenant> {
+    const tenant = await this.tenantRepository.findOne({ where: { id } });
+
+    if (!tenant) {
+      throw new NotFoundException({
+        message: 'Tenant not found',
+        errors: [
+          {
+            code: 'TENANT_NOT_FOUND',
+            message: `Tenant with ID ${id} not found`,
+          },
+        ],
+      });
+    }
+
+    // Update only provided fields
+    Object.assign(tenant, updateData);
+
+    const updatedTenant = await this.tenantRepository.save(tenant);
+    await this.attachMemberCounts([updatedTenant]);
+
+    return updatedTenant;
+  }
+
   async getTenantsByOwner(userId: string): Promise<Tenant[]> {
     // 1. Get tenants where user is owner
     const ownedTenants = await this.tenantRepository.find({

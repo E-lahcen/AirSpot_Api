@@ -120,7 +120,7 @@ export class Campaign extends BaseEntity {
   @Column({ type: 'integer', default: 0 })
   reach: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'float', default: 0 })
   spend: number;
 
   @Column({ type: 'varchar', length: 50, nullable: true })

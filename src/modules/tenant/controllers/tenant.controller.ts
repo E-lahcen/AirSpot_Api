@@ -28,7 +28,7 @@ import { TenantService } from '../services/tenant.service';
 import { TenantManagementService } from '../services/tenant-management.service';
 import { UserService } from '@app/modules/user/services/user.service';
 import { RoleService } from '@app/modules/role/services/role.service';
-import { InviteMemberDto, UpdateMemberRoleDto } from '../dto';
+import { InviteMemberDto, UpdateMemberRoleDto, UpdateTenantDto } from '../dto';
 
 @ApiTags('Organizations')
 @ApiBearerAuth()
@@ -87,6 +87,72 @@ export class TenantController {
     }
 
     return tenant;
+  }
+
+  @Patch()
+  @ApiOperation({ summary: 'Update current organization' })
+  @ApiResponse({
+    status: 200,
+    description: 'Organization updated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        slug: { type: 'string', example: 'acme-corporation' },
+        company_name: { type: 'string', example: 'Acme Corporation' },
+        description: { type: 'string' },
+        logo: { type: 'string' },
+        region: { type: 'string' },
+        is_active: { type: 'boolean' },
+        default_role: { type: 'string' },
+        enforce_domain: { type: 'boolean' },
+        domain: { type: 'string' },
+        owner_id: { type: 'string', format: 'uuid' },
+        created_at: { type: 'string', format: 'date-time' },
+        updated_at: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @Roles('owner', 'admin', 'super_admin')
+  async updateOrganization(
+    @Body() updateTenantDto: UpdateTenantDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantSlug = user.slug || this.tenantService.getSlug();
+    if (!tenantSlug) {
+      throw new NotFoundException({
+        message: 'Tenant not found',
+        errors: [
+          {
+            code: 'TENANT_NOT_FOUND',
+            message: 'Unable to determine tenant for current user',
+          },
+        ],
+      });
+    }
+
+    const tenant = await this.tenantManagementService.findBySlug(tenantSlug);
+    if (!tenant) {
+      throw new NotFoundException({
+        message: 'Tenant not found',
+        errors: [
+          {
+            code: 'TENANT_NOT_FOUND',
+            message: `No tenant found with slug: ${tenantSlug}`,
+          },
+        ],
+      });
+    }
+
+    const updatedTenant = await this.tenantManagementService.updateTenant(
+      tenant.id,
+      updateTenantDto,
+    );
+
+    return {
+      message: 'Organization updated successfully',
+      tenant: updatedTenant,
+    };
   }
 
   @Get('members')
