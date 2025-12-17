@@ -121,7 +121,7 @@ export class TenantController {
       },
     },
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async getMembers() {
     const users = await this.userService.findAllUsers();
     return users.map((user) => ({
