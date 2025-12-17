@@ -273,6 +273,7 @@ export class TenantManagementService {
         const roles = result.map((r) => r.role_name);
         if (roles.includes('owner')) return 'owner';
         if (roles.includes('admin')) return 'admin';
+        if (roles.includes('super_admin')) return 'super_admin';
         return 'member';
       }
       return 'member';

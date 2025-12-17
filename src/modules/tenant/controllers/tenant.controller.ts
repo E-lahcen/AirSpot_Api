@@ -208,7 +208,7 @@ export class TenantController {
     status: 201,
     description: 'Invitation sent successfully',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async inviteMember(
     @Body() dto: InviteMemberDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -292,7 +292,7 @@ export class TenantController {
     status: 200,
     description: 'Member role updated successfully',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async updateMemberRole(
     @Param('id', ParseUUIDPipe) memberId: string,
     @Body() dto: UpdateMemberRoleDto,
