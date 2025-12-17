@@ -5,37 +5,10 @@ import {
   IsNumber,
   IsDateString,
   IsObject,
-  ValidateNested,
+  IsUUID,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-
-export class AudienceDataDto {
-  @ApiPropertyOptional({ description: 'Locations', type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  locations?: string[];
-
-  @ApiPropertyOptional({ description: 'Interests', type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  interests?: string[];
-
-  @ApiPropertyOptional({ description: 'Demographics', type: [Number] })
-  @IsArray()
-  @IsNumber({}, { each: true })
-  @IsOptional()
-  demographics?: number[];
-
-  @ApiPropertyOptional({ description: 'Genders', type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  genders?: string[];
-}
 
 export class CreateCampaignDto {
   @ApiPropertyOptional({ description: 'Campaign ID' })
@@ -67,11 +40,11 @@ export class CreateCampaignDto {
   @IsString()
   budgetAmount: string;
 
-  @ApiPropertyOptional({ description: 'Audience data', type: AudienceDataDto })
-  @ValidateNested()
-  @Type(() => AudienceDataDto)
+  @ApiPropertyOptional({ description: 'Audience IDs', type: [String] })
+  @IsArray()
+  @IsUUID('4', { each: true })
   @IsOptional()
-  audience?: AudienceDataDto;
+  audienceIds?: string[];
 
   @ApiProperty({ description: 'Selected broadcast TV', type: [String] })
   @IsArray()

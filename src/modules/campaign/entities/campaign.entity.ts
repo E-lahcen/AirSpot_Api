@@ -1,8 +1,17 @@
-import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  OneToMany,
+  ManyToOne,
+  ManyToMany,
+  JoinTable,
+  JoinColumn,
+} from 'typeorm';
 import { AdVariation } from '../../ad-variation/entities/ad-variation.entity';
 import { BaseEntity } from '@app/common/entities/base.entity';
 import { User } from '@app/modules/user/entities/user.entity';
 import { Task } from '../../task/entities/task.entity';
+import { Audience } from '../../audience/entities/audience.entity';
 
 export enum CampaignGoal {
   AWARENESS = 'AWARENESS',
@@ -81,13 +90,16 @@ export class Campaign extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   selected_days: Record<string, any> | null;
 
-  @Column({ type: 'jsonb', nullable: true })
-  audience: {
-    locations?: string[];
-    interests?: string[];
-    demographics?: number[];
-    genders?: string[];
-  } | null;
+  @ManyToMany(() => Audience, (audience) => audience.campaigns_relation, {
+    nullable: true,
+    cascade: ['insert', 'update'],
+  })
+  @JoinTable({
+    name: 'campaign_audiences',
+    joinColumn: { name: 'campaign_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'audience_id', referencedColumnName: 'id' },
+  })
+  audiences: Audience[] | null;
 
   @Column('text', { array: true, nullable: true })
   selected_broadcast_tv: string[] | null;

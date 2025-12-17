@@ -70,14 +70,17 @@ export class AudienceService {
       limit: filterDto.limit || 10,
     });
 
-    // Correct the campaign counts by querying actual campaigns
+    // Correct the campaign counts by querying campaigns that use this audience
     const campaignRepository =
       await this.tenantConnection.getRepository(Campaign);
 
     for (const audience of paginatedResult.items) {
+      // Count campaigns that have this audience in their audiences relationship
       const count = await campaignRepository
         .createQueryBuilder('campaign')
-        .where('campaign.audience IS NOT NULL')
+        .innerJoin('campaign.audiences', 'aud')
+        .where('aud.id = :audienceId', { audienceId: audience.id })
+        .andWhere('campaign.deleted_at IS NULL')
         .getCount();
 
       audience.campaigns = count;
@@ -107,12 +110,15 @@ export class AudienceService {
       throw new NotFoundException(`Audience with ID ${id} not found`);
     }
 
-    // Correct the campaign count
+    // Correct the campaign count by counting campaigns that use this audience
     const campaignRepository =
       await this.tenantConnection.getRepository(Campaign);
+
     const count = await campaignRepository
       .createQueryBuilder('campaign')
-      .where('campaign.audience IS NOT NULL')
+      .innerJoin('campaign.audiences', 'aud')
+      .where('aud.id = :audienceId', { audienceId: audience.id })
+      .andWhere('campaign.deleted_at IS NULL')
       .getCount();
 
     audience.campaigns = count;

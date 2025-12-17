@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, ManyToMany, JoinColumn } from 'typeorm';
 import { AdVariation } from '../../ad-variation/entities/ad-variation.entity';
 import { BaseEntity } from '@app/common/entities/base.entity';
 import { User } from '@app/modules/user/entities/user.entity';
+import { Campaign } from '../../campaign/entities/campaign.entity';
 
 export enum TargetType {
   DEMOGRAPHIC = 'Demographic',
@@ -71,4 +72,9 @@ export class Audience extends BaseEntity {
 
   @Column({ type: 'json', nullable: true })
   selected_genders: string[];
+
+  @ManyToMany(() => Campaign, (campaign) => campaign.audiences, {
+    nullable: true,
+  })
+  campaigns_relation: Campaign[] | null;
 }

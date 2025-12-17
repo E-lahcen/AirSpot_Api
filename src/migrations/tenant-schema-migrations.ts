@@ -917,4 +917,82 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       `);
     },
   },
+  {
+    version: 1734445737001,
+    name: 'AddCampaignAudienceRelationToTenant',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop the audience column if it exists
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."campaigns" 
+        DROP COLUMN IF EXISTS "audience"
+      `);
+
+      // Create campaign_audiences join table
+      await queryRunner.query(`
+        CREATE TABLE IF NOT EXISTS "${schema}"."campaign_audiences" (
+          "campaign_id" uuid NOT NULL,
+          "audience_id" uuid NOT NULL,
+          CONSTRAINT "PK_${schema}_campaign_audiences" PRIMARY KEY ("campaign_id", "audience_id")
+        )
+      `);
+
+      // Create indexes
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_${schema}_campaign_audiences_campaign_id" 
+        ON "${schema}"."campaign_audiences" ("campaign_id")
+      `);
+
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_${schema}_campaign_audiences_audience_id" 
+        ON "${schema}"."campaign_audiences" ("audience_id")
+      `);
+
+      // Add foreign key constraints
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."campaign_audiences" 
+        ADD CONSTRAINT "FK_${schema}_campaign_audiences_campaign_id" 
+        FOREIGN KEY ("campaign_id") REFERENCES "${schema}"."campaigns"("id") 
+        ON DELETE CASCADE ON UPDATE CASCADE
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."campaign_audiences" 
+        ADD CONSTRAINT "FK_${schema}_campaign_audiences_audience_id" 
+        FOREIGN KEY ("audience_id") REFERENCES "${schema}"."audiences"("id") 
+        ON DELETE CASCADE ON UPDATE CASCADE
+      `);
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop foreign key constraints
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."campaign_audiences" 
+        DROP CONSTRAINT IF EXISTS "FK_${schema}_campaign_audiences_audience_id"
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."campaign_audiences" 
+        DROP CONSTRAINT IF EXISTS "FK_${schema}_campaign_audiences_campaign_id"
+      `);
+
+      // Drop indexes
+      await queryRunner.query(`
+        DROP INDEX IF EXISTS "${schema}"."IDX_${schema}_campaign_audiences_audience_id"
+      `);
+
+      await queryRunner.query(`
+        DROP INDEX IF EXISTS "${schema}"."IDX_${schema}_campaign_audiences_campaign_id"
+      `);
+
+      // Drop join table
+      await queryRunner.query(`
+        DROP TABLE IF EXISTS "${schema}"."campaign_audiences"
+      `);
+
+      // Recreate the audience column as JSONB
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."campaigns" 
+        ADD COLUMN IF NOT EXISTS "audience" jsonb
+      `);
+    },
+  },
 ];

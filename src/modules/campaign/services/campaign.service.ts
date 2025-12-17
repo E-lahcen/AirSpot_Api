@@ -2,6 +2,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TenantConnectionService } from '@app/modules/tenant/services/tenant-connection.service';
 import { Campaign } from '../entities/campaign.entity';
+import { Audience } from '../../audience/entities/audience.entity';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
 import { UpdateCampaignDto } from '../dto/update-campaign.dto';
 import { FilterCampaignDto } from '../dto/filter-campaign.dto';
@@ -45,7 +46,6 @@ export class CampaignService {
       owner_id,
       // New fields from DTO
       selected_days: createCampaignDto.selectedDays,
-      audience: createCampaignDto.audience,
       selected_broadcast_tv: createCampaignDto.selectedBroadcastTV,
       selected_streaming: createCampaignDto.selectedStreaming,
       bidding_strategy: createCampaignDto.biddingStrategy,
@@ -56,6 +56,25 @@ export class CampaignService {
       spend: createCampaignDto.spend || 0,
       roi: createCampaignDto.roi || null,
     });
+
+    // Link audiences to the campaign if audienceIds are provided
+    if (
+      createCampaignDto.audienceIds &&
+      createCampaignDto.audienceIds.length > 0
+    ) {
+      const audienceRepository =
+        await this.tenantConnection.getRepository(Audience);
+      const audiences = await audienceRepository
+        .createQueryBuilder('audience')
+        .where('audience.id IN (:...ids)', {
+          ids: createCampaignDto.audienceIds,
+        })
+        .getMany();
+
+      if (audiences.length > 0) {
+        campaign.audiences = audiences;
+      }
+    }
 
     const savedCampaign = await campaignRepository.save(campaign);
 
@@ -154,9 +173,6 @@ export class CampaignService {
     if (updateCampaignDto.selectedDays) {
       updateData.selected_days = updateCampaignDto.selectedDays;
     }
-    if (updateCampaignDto.audience) {
-      updateData.audience = updateCampaignDto.audience;
-    }
     if (updateCampaignDto.selectedBroadcastTV) {
       updateData.selected_broadcast_tv = updateCampaignDto.selectedBroadcastTV;
     }
@@ -182,9 +198,29 @@ export class CampaignService {
       updateData.roi = updateCampaignDto.roi;
     }
 
-    return campaignRepository
-      .update(campaign.id, updateData)
-      .then(() => this.findOne(id));
+    // Update audiences if audienceIds are provided
+    if (updateCampaignDto.audienceIds !== undefined) {
+      const audienceRepository =
+        await this.tenantConnection.getRepository(Audience);
+      if (updateCampaignDto.audienceIds.length > 0) {
+        const audiences = await audienceRepository
+          .createQueryBuilder('audience')
+          .where('audience.id IN (:...ids)', {
+            ids: updateCampaignDto.audienceIds,
+          })
+          .getMany();
+        campaign.audiences = audiences;
+      } else {
+        campaign.audiences = null;
+      }
+      await campaignRepository.save(campaign);
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await campaignRepository.update(campaign.id, updateData);
+    }
+
+    return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {
