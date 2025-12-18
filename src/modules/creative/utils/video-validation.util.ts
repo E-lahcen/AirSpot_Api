@@ -209,9 +209,42 @@ export class VideoValidationUtil {
         );
       });
 
-      // Write buffer to ffprobe's stdin
-      ffprobe.stdin.write(buffer);
-      ffprobe.stdin.end();
+      // Handle stdin errors (e.g., EPIPE)
+      ffprobe.stdin.on('error', (error) => {
+        // Ignore EPIPE errors as they're expected when ffprobe closes early
+        if (error.message.includes('EPIPE')) {
+          return;
+        }
+        reject(
+          new BadRequestException({
+            message: 'Failed to write video data',
+            errors: [
+              {
+                code: 'STDIN_WRITE_ERROR',
+                message: `Error writing to ffprobe: ${error.message}`,
+              },
+            ],
+          }),
+        );
+      });
+
+      // Write buffer to ffprobe's stdin with error handling
+      try {
+        ffprobe.stdin.write(buffer);
+        ffprobe.stdin.end();
+      } catch (error) {
+        reject(
+          new BadRequestException({
+            message: 'Failed to send video data to analyzer',
+            errors: [
+              {
+                code: 'BUFFER_WRITE_ERROR',
+                message: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          }),
+        );
+      }
     });
   }
 }
