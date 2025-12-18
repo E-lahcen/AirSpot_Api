@@ -9,12 +9,13 @@ import {
 } from 'class-validator';
 
 export class CreateBrandDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Organization (tenant) ID that owns this brand',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
+  @IsOptional()
   @IsUUID()
-  tenant_id: string;
+  tenant_id?: string;
 
   @ApiProperty({
     description: 'Brand name',

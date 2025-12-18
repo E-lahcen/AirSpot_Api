@@ -42,7 +42,7 @@ export class BrandController {
     status: 409,
     description: 'Brand with this name already exists for this organization',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async create(@Body() createBrandDto: CreateBrandDto): Promise<Brand> {
     return await this.brandService.create(createBrandDto);
   }
@@ -100,7 +100,7 @@ export class BrandController {
     status: 409,
     description: 'Brand with this name already exists for this organization',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateBrandDto: UpdateBrandDto,
@@ -119,7 +119,7 @@ export class BrandController {
     status: 404,
     description: 'Brand not found',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.brandService.remove(id);
   }
@@ -135,7 +135,7 @@ export class BrandController {
     status: 404,
     description: 'Brand not found',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async restore(@Param('id', ParseUUIDPipe) id: string): Promise<Brand> {
     return await this.brandService.restore(id);
   }
