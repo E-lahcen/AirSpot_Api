@@ -6,6 +6,7 @@ import {
   IsInt,
   IsArray,
   IsBoolean,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -16,6 +17,17 @@ export class CreateCreativeDto {
   })
   @IsUUID()
   organization_id: string;
+
+  @ApiPropertyOptional({
+    description: 'Brand id (UUID) - Optional',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsOptional()
+  @ValidateIf(
+    (o: CreateCreativeDto) => o.brand_id !== '' && o.brand_id !== null,
+  )
+  @IsUUID()
+  brand_id?: string;
 
   @ApiProperty({ description: 'Creative name', example: 'Summer' })
   @IsString()
@@ -98,6 +110,37 @@ export class CreateCreativeDto {
   @IsOptional()
   @IsString()
   video_path?: string;
+
+  @ApiPropertyOptional({
+    description: 'Video width in pixels',
+    example: 1920,
+  })
+  @IsOptional()
+  @IsInt()
+  video_width?: number;
+
+  @ApiPropertyOptional({
+    description: 'Video height in pixels',
+    example: 1080,
+  })
+  @IsOptional()
+  @IsInt()
+  video_height?: number;
+
+  @ApiPropertyOptional({
+    description: 'Video duration in seconds',
+    example: 30.5,
+  })
+  @IsOptional()
+  video_duration?: number;
+
+  @ApiPropertyOptional({
+    description: 'Video format',
+    example: 'mp4',
+  })
+  @IsOptional()
+  @IsString()
+  video_format?: string;
 
   @ApiPropertyOptional({
     description: 'Template image path',

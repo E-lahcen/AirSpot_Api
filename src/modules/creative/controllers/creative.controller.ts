@@ -8,8 +8,14 @@ import {
   Delete,
   UseGuards,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CreativeService } from '../services';
 import { CreateCreativeDto, UpdateCreativeDto } from '../dto';
 import { FilterCreativeDto } from '../dto/filter-creative.dto';
@@ -31,9 +37,59 @@ export class CreativeController {
   constructor(private readonly creativeService: CreativeService) {}
 
   @Post()
+  @UseInterceptors(FileInterceptor('video'))
   @ApiCreateCreative()
-  create(
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        video: {
+          type: 'string',
+          format: 'binary',
+          description:
+            'MP4 video file (1920x1080, 16:9 aspect ratio, max 100MB) - Optional',
+        },
+        organization_id: { type: 'string' },
+        brand_id: { type: 'string', description: 'Brand UUID - Optional' },
+        name: { type: 'string' },
+        description: { type: 'string' },
+        orientation: { type: 'string' },
+        theme: { type: 'string' },
+        video_position: { type: 'string' },
+        brand_name: { type: 'string' },
+        price: { type: 'string' },
+        product_name: { type: 'string' },
+        features: { type: 'array', items: { type: 'string' } },
+        show_qr_code: { type: 'boolean' },
+        qr_code_text: { type: 'string' },
+        logo_path: { type: 'string' },
+        product_image_path: { type: 'string' },
+        template_image_path: { type: 'string' },
+        file_name: { type: 'string' },
+        id_template: { type: 'string' },
+      },
+    },
+  })
+  async create(
     @Body() createCreativeDto: CreateCreativeDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 100 * 1024 * 1024 }), // 100MB
+          new FileTypeValidator({ fileType: 'video/mp4' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    video:
+      | {
+          buffer: Buffer;
+          originalname: string;
+          mimetype: string;
+          size: number;
+        }
+      | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.creativeService.create(
@@ -41,6 +97,7 @@ export class CreativeController {
       user.id,
       user.tenantId,
       user,
+      video,
     );
   }
 

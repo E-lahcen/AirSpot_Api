@@ -7,12 +7,16 @@ import { paginate, Pagination } from 'nestjs-typeorm-paginate';
 import { FindOptionsWhere, Like } from 'typeorm';
 import { TemplateService } from '@app/modules/template/services/template.service';
 import { AuthenticatedUser } from '@app/modules/auth/decorators';
+import { StorageService } from '@app/modules/storage/services/storage.service';
+import { VideoValidationUtil } from '../utils/video-validation.util';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class CreativeService {
   constructor(
     private readonly tenantConnection: TenantConnectionService,
     private readonly templateService: TemplateService,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(
@@ -20,6 +24,12 @@ export class CreativeService {
     owner_id: string,
     organization_id: string,
     user: AuthenticatedUser,
+    video?: {
+      buffer: Buffer;
+      originalname: string;
+      mimetype: string;
+      size: number;
+    },
   ): Promise<Creative> {
     const creativeRepository =
       await this.tenantConnection.getRepository(Creative);
@@ -33,7 +43,33 @@ export class CreativeService {
       owner_id,
     });
 
-    if (id_template) {
+    // Handle video upload if provided
+    if (video) {
+      const videoMetadata = await VideoValidationUtil.validateVideo(
+        video.buffer,
+        video.originalname,
+      );
+
+      // Generate unique filename
+      const fileExtension = video.originalname.split('.').pop();
+      const fileName = `creatives/${user.tenantId}/${uuidv4()}.${fileExtension}`;
+
+      // Upload to MinIO
+      const videoUrl = await this.storageService.uploadFile(
+        fileName,
+        video.buffer,
+        video.size,
+        video.mimetype,
+      );
+
+      // Set video in ormation
+      creative.video_path = videoUrl;
+      creative.video_width = videoMetadata.width;
+      creative.video_height = videoMetadata.height;
+      creative.video_duration = videoMetadata.duration;
+      creative.video_format = videoMetadata.format;
+    } else if (id_template) {
+      // Fallback to template video generation if no video uploaded
       const template = await this.templateService.findOne(id_template);
 
       if (!template) {
@@ -121,5 +157,55 @@ export class CreativeService {
     const creativeRepository =
       await this.tenantConnection.getRepository(Creative);
     await creativeRepository.remove(creative);
+  }
+
+  /**
+   * Upload and validate video file for a creative
+   * Requirements:
+   * - Format: MP4
+   * - Resolution: 1920x1080
+   * - Aspect Ratio: 16:9
+   */
+  async uploadVideo(
+    id: string,
+    file: {
+      buffer: Buffer;
+      originalname: string;
+      mimetype: string;
+      size: number;
+    },
+    user: AuthenticatedUser,
+  ): Promise<Creative> {
+    // Find the creative
+    const creative = await this.findOne(id);
+    const creativeRepository =
+      await this.tenantConnection.getRepository(Creative);
+
+    // Validate video file
+    const metadata = await VideoValidationUtil.validateVideo(
+      file.buffer,
+      file.originalname,
+    );
+
+    // Generate unique filename
+    const fileExtension = file.originalname.split('.').pop();
+    const fileName = `creatives/${user.tenantId}/${uuidv4()}.${fileExtension}`;
+
+    // Upload to MinIO
+    const videoUrl = await this.storageService.uploadFile(
+      fileName,
+      file.buffer,
+      file.size,
+      file.mimetype,
+    );
+
+    // Update creative with video information
+    creative.video_path = videoUrl;
+    creative.video_width = metadata.width;
+    creative.video_height = metadata.height;
+    creative.video_duration = metadata.duration;
+    creative.video_format = metadata.format;
+
+    return await creativeRepository.save(creative);
   }
 }

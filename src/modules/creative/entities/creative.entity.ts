@@ -3,11 +3,19 @@ import { AdVariation } from '../../ad-variation/entities/ad-variation.entity';
 import { BaseEntity } from '@app/common/entities/base.entity';
 import { User } from '@app/modules/user/entities/user.entity';
 import { Task } from '../../task/entities/task.entity';
+import { Brand } from '@app/modules/brand/entities/brand.entity';
 
 @Entity('creatives')
 export class Creative extends BaseEntity {
   @Column({ type: 'uuid' })
   organization_id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  brand_id: string | null;
+
+  @ManyToOne(() => Brand, { nullable: true })
+  @JoinColumn({ name: 'brand_id' })
+  brand: Brand | null;
 
   @Column({ type: 'varchar', length: 255 })
   name: string;
@@ -51,6 +59,18 @@ export class Creative extends BaseEntity {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   video_path: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  video_width: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  video_height: number | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  video_duration: number | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  video_format: string | null;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   template_image_path: string | null;

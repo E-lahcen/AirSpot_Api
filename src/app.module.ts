@@ -31,6 +31,7 @@ import { TaskModule } from './modules/task/task.module';
 import { TaskTemplateModule } from './modules/task-template/task-template.module';
 import { TimeoutMiddleware } from './core/middlewares/timeout.middleware';
 import { HealthModule } from './modules/health/health.module';
+import { BrandModule } from './modules/brand/brand.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { HealthModule } from './modules/health/health.module';
     TaskModule,
     TaskTemplateModule,
     HealthModule,
+    BrandModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

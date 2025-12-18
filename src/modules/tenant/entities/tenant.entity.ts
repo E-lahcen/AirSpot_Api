@@ -4,7 +4,9 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { Brand } from '@app/modules/brand/entities/brand.entity';
 
 @Entity({ name: 'tenants', schema: 'public' })
 export class Tenant {
@@ -68,6 +70,9 @@ export class Tenant {
     default: 'pending',
   })
   status: 'pending' | 'approved' | 'rejected';
+
+  @OneToMany(() => Brand, (brand) => brand.tenant)
+  brands: Brand[];
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
