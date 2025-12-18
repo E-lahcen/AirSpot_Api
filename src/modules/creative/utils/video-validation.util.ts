@@ -36,14 +36,17 @@ export class VideoValidationUtil {
     // Get video metadata using ffprobe
     const metadata = await this.getVideoMetadata(buffer);
 
-    // Validate format
-    if (metadata.format !== 'mp4') {
+    // Validate format - MP4 container can be reported as 'mp4' or 'mov,mp4,m4a,3gp,3g2,mj2'
+    const isValidFormat = metadata.format.includes('mp4');
+
+    if (!isValidFormat) {
       throw new BadRequestException({
         message: 'Invalid video format',
         errors: [
           {
             code: 'INVALID_FORMAT',
             message: 'Video format must be MP4',
+            details: `Found: ${metadata.format}`,
           },
         ],
       });
