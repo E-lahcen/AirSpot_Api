@@ -6,6 +6,7 @@ import {
   ValidateNested,
   IsObject,
   IsOptional,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -37,6 +38,17 @@ export class OverlayVideoDto {
   @IsString()
   @IsUrl()
   image: string;
+
+  @ApiProperty({ description: 'Name of the overlay video', required: false })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  // add brand_id
+  @ApiProperty({ description: 'Brand ID', required: false })
+  @IsOptional()
+  @IsUUID()
+  brand_id?: string;
 
   @ApiProperty({
     description: 'Canvas dimensions (currently not used)',

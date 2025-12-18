@@ -1841,6 +1841,7 @@ export class TemplateService {
     widthVideo: number,
     heightVideo: number,
     user: AuthenticatedUser,
+    name?: string,
   ): Promise<{
     videoPath: string | null;
     filename: string;
@@ -1943,7 +1944,7 @@ export class TemplateService {
       const creative = creativeRepository.create({
         organization_id: user.tenantId,
         owner_id: user.id,
-        name: `Canvas Video ${new Date().toISOString()}`,
+        name: name || `Canvas Video ${new Date().toISOString()}`,
         description: 'Generated from canvas editor',
         orientation: 'vertical',
         video_position: 'left',

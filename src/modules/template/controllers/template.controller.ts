@@ -289,6 +289,7 @@ export class TemplateController {
       overlayVideoDto.video_dimensions?.width || 0,
       overlayVideoDto.video_dimensions?.height || 0,
       user,
+      overlayVideoDto.title,
     );
     const baseUrl = process.env.APP_URL || 'https://airspot-backend.dba.ma';
     return {
