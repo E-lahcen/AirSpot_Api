@@ -458,10 +458,59 @@ export class AuthService {
         .authForTenant(tenant.firebase_tenant_id);
 
       // Step 3: Verify user credentials using Firebase Auth REST API
-      // Note: Admin SDK doesn't have signInWithEmailAndPassword, so we create a custom token
-      const firebaseUser = await tenantAuth.getUserByEmail(dto.email);
+      // Firebase Admin SDK doesn't support password verification, so we use the REST API
+      const firebaseApiKey = this.configService.get<string>(
+        'FIREBASE_WEB_API_KEY',
+      );
 
-      if (!firebaseUser) {
+      let firebaseUser: UserRecord;
+      try {
+        const response = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: dto.email,
+              password: dto.password,
+              returnSecureToken: true,
+              tenantId: tenant.firebase_tenant_id,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new UnauthorizedException({
+            message: 'Invalid credentials',
+            errors: [
+              {
+                code: 'INVALID_CREDENTIALS',
+                message: 'Email or password is incorrect',
+              },
+            ],
+          });
+        }
+
+        const authResult = (await response.json()) as { localId: string };
+        firebaseUser = await tenantAuth.getUser(authResult.localId);
+
+        if (!firebaseUser) {
+          throw new UnauthorizedException({
+            message: 'Invalid credentials',
+            errors: [
+              {
+                code: 'INVALID_CREDENTIALS',
+                message: 'Email or password is incorrect',
+              },
+            ],
+          });
+        }
+      } catch (error) {
+        if (error instanceof UnauthorizedException) {
+          throw error;
+        }
         throw new UnauthorizedException({
           message: 'Invalid credentials',
           errors: [

@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsBoolean,
-  IsHexColor,
+  IsEmail,
   IsOptional,
   IsString,
   IsUUID,
@@ -27,31 +26,6 @@ export class CreateBrandDto {
   name: string;
 
   @ApiPropertyOptional({
-    description: 'Brand logo URL',
-    example: 'https://example.com/logo.png',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  logo?: string;
-
-  @ApiPropertyOptional({
-    description: 'Brand primary color (hex format)',
-    example: '#FF5733',
-  })
-  @IsOptional()
-  @IsHexColor()
-  primary_color?: string;
-
-  @ApiPropertyOptional({
-    description: 'Brand secondary color (hex format)',
-    example: '#33FF57',
-  })
-  @IsOptional()
-  @IsHexColor()
-  secondary_color?: string;
-
-  @ApiPropertyOptional({
     description: 'Brand description',
     example: 'A leading sportswear brand',
   })
@@ -60,11 +34,38 @@ export class CreateBrandDto {
   description?: string;
 
   @ApiPropertyOptional({
-    description: 'Whether the brand is active',
-    example: true,
-    default: true,
+    description: 'Brand logo URL (image file)',
+    example: 'https://example.com/logo.png',
   })
   @IsOptional()
-  @IsBoolean()
-  is_active?: boolean;
+  @IsString()
+  @MaxLength(500)
+  logo?: string;
+
+  @ApiPropertyOptional({
+    description: 'Brand emoji (alternative to logo)',
+    example: '🏢',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  emoji?: string;
+
+  @ApiPropertyOptional({
+    description: 'Primary contact person name',
+    example: 'John Doe',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  contact_name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Primary contact email',
+    example: 'contact@brand.com',
+  })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  contact_email?: string;
 }

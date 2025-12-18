@@ -20,30 +20,6 @@ export class Brand extends BaseEntity {
   name: string;
 
   @ApiProperty({
-    description: 'Brand logo URL',
-    example: 'https://example.com/logo.png',
-    nullable: true,
-  })
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  logo: string | null;
-
-  @ApiProperty({
-    description: 'Brand primary color',
-    example: '#FF5733',
-    nullable: true,
-  })
-  @Column({ type: 'varchar', length: 7, nullable: true })
-  primary_color: string | null;
-
-  @ApiProperty({
-    description: 'Brand secondary color',
-    example: '#33FF57',
-    nullable: true,
-  })
-  @Column({ type: 'varchar', length: 7, nullable: true })
-  secondary_color: string | null;
-
-  @ApiProperty({
     description: 'Brand description',
     example: 'A leading sportswear brand',
     nullable: true,
@@ -52,12 +28,36 @@ export class Brand extends BaseEntity {
   description: string | null;
 
   @ApiProperty({
-    description: 'Whether the brand is active',
-    example: true,
-    default: true,
+    description: 'Brand logo URL (image file)',
+    example: 'https://example.com/logo.png',
+    nullable: true,
   })
-  @Column({ type: 'boolean', default: true })
-  is_active: boolean;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  logo: string | null;
+
+  @ApiProperty({
+    description: 'Brand emoji (alternative to logo)',
+    example: '🏢',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  emoji: string | null;
+
+  @ApiProperty({
+    description: 'Primary contact person name',
+    example: 'John Doe',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  contact_name: string | null;
+
+  @ApiProperty({
+    description: 'Primary contact email',
+    example: 'contact@brand.com',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  contact_email: string | null;
 
   @ManyToOne(() => Tenant, (tenant) => tenant.brands, {
     onDelete: 'CASCADE',
