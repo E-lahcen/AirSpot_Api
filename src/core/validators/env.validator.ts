@@ -86,6 +86,18 @@ export class EnvironmentVariables {
   @IsString()
   @Expose()
   AUTO_SETUP_MULTITENANCY: string;
+
+  @IsString()
+  @Expose()
+  GOOGLE_CLIENT_ID: string;
+
+  @IsString()
+  @Expose()
+  GOOGLE_CLIENT_SECRET: string;
+
+  @IsString()
+  @Expose()
+  GOOGLE_CALLBACK_URL: string;
 }
 
 export const validateEnvVariables = (config: EnvironmentVariables) => {

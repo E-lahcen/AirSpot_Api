@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Auth } from 'firebase-admin/auth';
+import { Auth, UserRecord } from 'firebase-admin/auth';
 import { UserService } from '@app/modules/user/services/user.service';
 import { TenantManagementService } from '@app/modules/tenant/services/tenant-management.service';
 import { TenantService } from '@app/modules/tenant/services/tenant.service';
@@ -627,7 +627,7 @@ export class AuthService {
         body: JSON.stringify({
           token: customToken,
           returnSecureToken: true,
-          tenantId: tenant.firebase_tenant_id, // ← Add tenant ID
+          tenantId: tenant.firebase_tenant_id,
         }),
       },
     );
@@ -794,6 +794,463 @@ export class AuthService {
       id_token: data.id_token,
       refresh_token: data.refresh_token,
       expires_in: data.expires_in,
+    };
+  }
+
+  /**
+   * Google OAuth Login/Register
+   * Handles both login and registration for Google users
+   * No email verification required as Google already verifies emails
+   */
+  async googleAuth(
+    idToken: string,
+    organisationSubdomain?: string,
+    organisationName?: string,
+  ) {
+    try {
+      // Step 1: Verify Google ID token
+      const decodedToken = await this.auth.verifyIdToken(idToken);
+      const email = decodedToken.email;
+      const name = decodedToken.name as string | undefined;
+      const picture = decodedToken.picture;
+
+      if (!email) {
+        throw new BadRequestException({
+          message: 'Email not found in Google token',
+          errors: [
+            {
+              code: 'INVALID_GOOGLE_TOKEN',
+              message: 'Google account does not have an email address',
+            },
+          ],
+        });
+      }
+
+      // Step 2: Split name into first and last name
+      const nameToSplit: string = name || email.split('@')[0];
+      const nameParts: string[] = nameToSplit.split(' ');
+      const firstName: string = nameParts[0] || '';
+      const lastName: string =
+        nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+      // Step 3: Check if user is logging into existing tenant
+      if (organisationSubdomain) {
+        return await this.googleLoginToTenant(
+          email,
+          firstName,
+          lastName,
+          picture || '',
+          organisationSubdomain,
+        );
+      }
+
+      // Step 4: No subdomain provided - check if user already has tenants
+      // Find first tenant where user is owner
+      const ownedTenant = await this.tenantManagementService
+        .getTenantRepository()
+        .findOne({
+          where: { owner_email: email, is_active: true },
+          order: { created_at: 'ASC' },
+        });
+
+      if (ownedTenant) {
+        // User already has a tenant - log them in
+        return await this.googleLoginToTenant(
+          email,
+          firstName,
+          lastName,
+          picture || '',
+          ownedTenant.slug,
+        );
+      }
+
+      // Step 5: No existing tenant found - Register new company/tenant
+      return await this.googleRegisterNewTenant(
+        email,
+        firstName,
+        lastName,
+        nameToSplit,
+        picture || '',
+        organisationName,
+      );
+    } catch (error) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      throw new BadRequestException({
+        message: 'Google authentication failed',
+        errors: [
+          {
+            code: 'GOOGLE_AUTH_FAILED',
+            message:
+              error instanceof Error ? error.message : 'Unknown error occurred',
+          },
+        ],
+      });
+    }
+  }
+
+  /**
+   * Google login to existing tenant
+   */
+  private async googleLoginToTenant(
+    email: string,
+    firstName: string,
+    lastName: string,
+    picture: string,
+    organisationSubdomain: string,
+  ) {
+    // Step 1: Find tenant by subdomain (using slug)
+    const tenant = await this.tenantManagementService.findBySlug(
+      organisationSubdomain,
+    );
+    if (!tenant) {
+      throw new NotFoundException({
+        message: 'Organisation not found',
+        errors: [
+          {
+            code: 'TENANT_NOT_FOUND',
+            message: 'No organisation found with this subdomain',
+          },
+        ],
+      });
+    }
+
+    // Step 2: Set tenant context
+    this.tenantService.setTenant(tenant);
+
+    // Step 3: Check if user exists in this tenant
+    const existingUser = await this.userService.findByEmail(email);
+
+    if (existingUser) {
+      // User exists - login
+      // Get or create Firebase user in this tenant
+      let firebaseUser: UserRecord;
+      try {
+        const tenantAuth = this.auth
+          .tenantManager()
+          .authForTenant(tenant.firebase_tenant_id);
+        firebaseUser = await tenantAuth.getUserByEmail(email);
+      } catch {
+        // Firebase user doesn't exist, create it
+        firebaseUser = await this.firebaseService.createTenantUser(
+          tenant.firebase_tenant_id,
+          email,
+          undefined, // No password for Google users
+          `${firstName} ${lastName}`,
+        );
+
+        // Update local user with Firebase UID
+        await this.userService.updateUser(existingUser.id, {
+          firebase_uid: firebaseUser.uid,
+        });
+      }
+
+      // Generate custom token
+      const tenantAuth = this.auth
+        .tenantManager()
+        .authForTenant(tenant.firebase_tenant_id);
+      const customToken = await tenantAuth.createCustomToken(firebaseUser.uid);
+
+      return {
+        custom_token: customToken,
+        firebase_tenant_id: tenant.firebase_tenant_id,
+        user: existingUser,
+        tenant,
+      };
+    } else {
+      // User doesn't exist in this tenant - create them
+      // This handles invitation acceptance or new user joining
+      await this.roleService.ensureDefaultRoles();
+      const memberRole = await this.roleService.findByName('member');
+
+      if (!memberRole) {
+        throw new NotFoundException({
+          message: 'Member role not found',
+          errors: [
+            {
+              code: 'ROLE_NOT_FOUND',
+              message: 'Default member role does not exist',
+            },
+          ],
+        });
+      }
+
+      const { user, firebaseUid } = await this.createTenantUser({
+        email,
+        password: Math.random().toString(36), // Random password (won't be used)
+        firstName,
+        lastName,
+        fullName: `${firstName} ${lastName}`,
+        tenant,
+        role: memberRole,
+      });
+
+      // Generate custom token for the newly created user
+      const tenantAuth = this.auth
+        .tenantManager()
+        .authForTenant(tenant.firebase_tenant_id);
+      const customToken = await tenantAuth.createCustomToken(firebaseUid);
+
+      return {
+        custom_token: customToken,
+        firebase_tenant_id: tenant.firebase_tenant_id,
+        user,
+        tenant,
+      };
+    }
+  }
+
+  /**
+   * Google registration - creates new tenant for company
+   */
+  private async googleRegisterNewTenant(
+    email: string,
+    firstName: string,
+    lastName: string,
+    fullName: string,
+    picture: string,
+    organisationName?: string,
+  ) {
+    // Step 1: Use provided organization name or generate from email domain
+    const companyName = organisationName || email.split('@')[1].split('.')[0];
+
+    // Step 2: Check if company already has a tenant
+    const existingTenant =
+      await this.tenantManagementService.findByCompanyName(companyName);
+    if (existingTenant) {
+      throw new ConflictException({
+        message: 'Company already exists',
+        errors: [
+          {
+            code: 'COMPANY_EXISTS',
+            message:
+              'A tenant for this company already exists. Please use the login flow with your organisation subdomain.',
+          },
+        ],
+      });
+    }
+
+    // Step 3: Create Firebase tenant
+    const firebaseTenant = await this.firebaseService.createTenant(companyName);
+
+    // Step 4: Create database tenant
+    const tenant = await this.tenantManagementService.createTenant({
+      companyName,
+      ownerEmail: email,
+      firebaseTenantId: firebaseTenant.tenantId,
+    });
+
+    // Step 5: Set tenant context and ensure default roles
+    this.tenantService.setTenant(tenant);
+    await this.roleService.ensureDefaultRoles();
+
+    // Step 6: Get owner role
+    const owner = await this.roleService.findByName('owner');
+    if (!owner) {
+      throw new NotFoundException({
+        message: 'Owner role not found',
+        errors: [
+          {
+            code: 'ROLE_NOT_FOUND',
+            message: 'Default owner role does not exist',
+          },
+        ],
+      });
+    }
+
+    // Step 7: Create user
+    const { user, firebaseUid } = await this.createTenantUser({
+      email,
+      password: Math.random().toString(36), // Random password (won't be used)
+      firstName,
+      lastName,
+      fullName,
+      tenant,
+      role: owner,
+    });
+
+    // Step 8: Set tenant owner
+    await this.tenantManagementService.setTenantOwner(tenant.id, user.id);
+
+    // Generate custom token for the newly created user
+    const tenantAuth = this.auth
+      .tenantManager()
+      .authForTenant(tenant.firebase_tenant_id);
+    const customToken = await tenantAuth.createCustomToken(firebaseUid);
+
+    return {
+      custom_token: customToken,
+      firebase_tenant_id: tenant.firebase_tenant_id,
+      user,
+      tenant: {
+        ...tenant,
+        owner_id: user.id,
+      },
+    };
+  }
+
+  /**
+   * Exchange Firebase custom token for ID token (private helper)
+   */
+  private async exchangeCustomTokenForIdToken(
+    customToken: string,
+    tenantId: string,
+  ): Promise<string> {
+    const apiKey = this.configService.get('FIREBASE_WEB_API_KEY', {
+      infer: true,
+    });
+
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: customToken,
+          returnSecureToken: true,
+          tenantId,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorResponse = (await response.json()) as {
+        error?: { message?: string };
+      };
+      throw new BadRequestException({
+        message: 'Failed to exchange custom token',
+        errors: [
+          {
+            code: 'TOKEN_EXCHANGE_FAILED',
+            message: errorResponse.error?.message || 'Token exchange failed',
+          },
+        ],
+      });
+    }
+
+    const data = (await response.json()) as { idToken: string };
+    return data.idToken;
+  }
+
+  /**
+   * Switch authenticated user to a different tenant
+   * Validates user has access to the target tenant and generates new custom token
+   */
+  async switchTenant(currentUserFirebaseUid: string, targetTenantSlug: string) {
+    // Step 1: Find the target tenant
+    const targetTenant =
+      await this.tenantManagementService.findBySlug(targetTenantSlug);
+
+    if (!targetTenant) {
+      throw new NotFoundException({
+        message: 'Tenant not found',
+        errors: [
+          {
+            code: 'TENANT_NOT_FOUND',
+            message: `No tenant found with slug: ${targetTenantSlug}`,
+          },
+        ],
+      });
+    }
+
+    if (!targetTenant.is_active) {
+      throw new UnauthorizedException({
+        message: 'Tenant is inactive',
+        errors: [
+          {
+            code: 'TENANT_INACTIVE',
+            message: 'This organization is currently inactive',
+          },
+        ],
+      });
+    }
+
+    // Step 2: Set tenant context to target tenant
+    this.tenantService.setTenant(targetTenant);
+
+    // Step 3: Get current user from Firebase to retrieve email
+    let userEmail: string;
+    try {
+      const firebaseUser = await this.auth.getUser(currentUserFirebaseUid);
+      userEmail = firebaseUser.email;
+    } catch {
+      throw new UnauthorizedException({
+        message: 'Invalid user',
+        errors: [
+          {
+            code: 'INVALID_USER',
+            message: 'Unable to verify user identity',
+          },
+        ],
+      });
+    }
+
+    // Step 4: Check if user exists in target tenant
+    const userInTargetTenant = await this.userService.findByEmail(userEmail);
+
+    if (!userInTargetTenant) {
+      throw new UnauthorizedException({
+        message: 'Access denied',
+        errors: [
+          {
+            code: 'NO_ACCESS',
+            message: 'You do not have access to this organization',
+          },
+        ],
+      });
+    }
+
+    // Step 5: Get or create Firebase user in target tenant
+    let firebaseUserInTenant: UserRecord;
+    try {
+      const tenantAuth = this.auth
+        .tenantManager()
+        .authForTenant(targetTenant.firebase_tenant_id);
+      firebaseUserInTenant = await tenantAuth.getUserByEmail(userEmail);
+    } catch {
+      // Create Firebase user in this tenant if doesn't exist
+      const [firstName, lastName] =
+        userInTargetTenant.first_name && userInTargetTenant.last_name
+          ? [userInTargetTenant.first_name, userInTargetTenant.last_name]
+          : userEmail.split('@')[0].split('.');
+
+      const createdUser = await this.firebaseService.createTenantUser(
+        targetTenant.firebase_tenant_id,
+        userEmail,
+        undefined, // No password needed for tenant switch
+        `${firstName} ${lastName}`,
+      );
+      firebaseUserInTenant = createdUser;
+
+      // Update user with Firebase UID
+      await this.userService.updateUser(userInTargetTenant.id, {
+        firebase_uid: createdUser.uid,
+      });
+    }
+
+    // Step 6: Generate custom token for target tenant
+    const tenantAuth = this.auth
+      .tenantManager()
+      .authForTenant(targetTenant.firebase_tenant_id);
+    const customToken = await tenantAuth.createCustomToken(
+      firebaseUserInTenant.uid,
+    );
+
+    // Step 7: Return custom token and tenant info
+    return {
+      custom_token: customToken,
+      firebase_tenant_id: targetTenant.firebase_tenant_id,
+      user: userInTargetTenant,
+      tenant: targetTenant,
     };
   }
 }

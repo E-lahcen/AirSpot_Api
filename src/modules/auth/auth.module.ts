@@ -9,6 +9,8 @@ import { FirebaseModule } from '../firebase/firebase.module';
 import { NotificationModule } from '../notification/notification.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmailVerification } from './entities/email-verification.entity';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { PassportModule } from '@nestjs/passport';
 
 @Global()
 @Module({
@@ -19,9 +21,10 @@ import { EmailVerification } from './entities/email-verification.entity';
     FirebaseModule,
     NotificationModule,
     TypeOrmModule.forFeature([EmailVerification]),
+    PassportModule.register({ defaultStrategy: 'google' }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthGuard, RolesGuard],
+  providers: [AuthService, AuthGuard, RolesGuard, GoogleStrategy],
   exports: [
     AuthService,
     UserModule,

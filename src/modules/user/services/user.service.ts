@@ -65,4 +65,19 @@ export class UserService {
 
     await userRepo.remove(user);
   }
+
+  async updateUser(userId: string, updateData: Partial<User>): Promise<User> {
+    const userRepo = await this.tenantConnection.getRepository(User);
+    const user = await userRepo.findOne({
+      where: { id: userId },
+      relations: ['roles'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    Object.assign(user, updateData);
+    return userRepo.save(user);
+  }
 }

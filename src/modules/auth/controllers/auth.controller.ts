@@ -14,10 +14,14 @@ import {
   ApiExchangeToken,
   ApiGetMe,
   ApiRefreshToken,
+  ApiGoogleAuth,
+  ApiSwitchTenant,
 } from '../docs';
 
 import { SendVerificationDto } from '../dto/send-verification.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
+import { GoogleAuthDto } from '../dto/google-auth.dto';
+import { SwitchTenantDto } from '../dto/switch-tenant.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -80,5 +84,28 @@ export class AuthController {
   @ResponseMessage({ message: 'User retrieved successfully' })
   async getMe(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getMe(user.firebase_uid);
+  }
+
+  @Post('google')
+  @Public()
+  @ApiGoogleAuth()
+  @ResponseMessage({ message: 'Google authentication successful' })
+  async googleAuth(@Body() dto: GoogleAuthDto) {
+    return this.authService.googleAuth(
+      dto.idToken,
+      dto.organisationSubdomain,
+      dto.organisationName,
+    );
+  }
+
+  @Post('switch-tenant')
+  @UseGuards(AuthGuard)
+  @ApiSwitchTenant()
+  @ResponseMessage({ message: 'Tenant switched successfully' })
+  async switchTenant(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SwitchTenantDto,
+  ) {
+    return this.authService.switchTenant(user.firebase_uid, dto.tenantSlug);
   }
 }

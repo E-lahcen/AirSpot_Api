@@ -48,6 +48,10 @@ export class TenantManagementService {
     private readonly userTenantRepository: Repository<UserTenant>,
   ) {}
 
+  getTenantRepository(): Repository<Tenant> {
+    return this.tenantRepository;
+  }
+
   async setTenantOwner(tenantId: string, ownerId: string): Promise<void> {
     return this.tenantRepository
       .update({ id: tenantId }, { owner_id: ownerId })
@@ -253,6 +257,70 @@ export class TenantManagementService {
 
     await this.attachMemberCounts(allTenants);
     return allTenants;
+  }
+
+  /**
+   * Get all tenants associated with a user email
+   * Searches both owner_email and user records across all tenant schemas
+   */
+  async getTenantsByEmail(email: string): Promise<Tenant[]> {
+    const tenantsMap = new Map<string, Tenant>();
+
+    // 1. Find tenants where user is the owner
+    const ownedTenants = await this.tenantRepository.find({
+      where: { owner_email: email, is_active: true },
+      order: { created_at: 'DESC' },
+    });
+
+    ownedTenants.forEach((tenant) => {
+      tenant.role = 'owner';
+      tenantsMap.set(tenant.id, tenant);
+    });
+
+    // 2. Find all active tenants to search for user membership
+    const allTenants = await this.tenantRepository.find({
+      where: { is_active: true },
+    });
+
+    // 3. Search each tenant schema for user with this email
+    for (const tenant of allTenants) {
+      try {
+        const result = await this.dataSource.query<
+          { id: string; email: string }[]
+        >(
+          `SELECT u.id, u.email
+           FROM "${tenant.schema_name}".users u
+           WHERE u.email = $1`,
+          [email],
+        );
+
+        if (result && result.length > 0) {
+          const userId = result[0].id;
+
+          // Get user role in this tenant
+          const role = await this.getUserRoleInTenant(
+            tenant.schema_name,
+            userId,
+          );
+
+          // If not already added as owner, add with role
+          if (!tenantsMap.has(tenant.id)) {
+            tenant.role = role;
+            tenantsMap.set(tenant.id, tenant);
+          }
+        }
+      } catch {
+        // Schema might not exist or query failed, skip this tenant
+        this.logger.debug(
+          `Could not query tenant ${tenant.schema_name} for user ${email}`,
+        );
+      }
+    }
+
+    const tenants = Array.from(tenantsMap.values());
+    await this.attachMemberCounts(tenants);
+
+    return tenants;
   }
 
   private async getUserRoleInTenant(

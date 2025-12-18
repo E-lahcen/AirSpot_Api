@@ -23,12 +23,18 @@ import {
   Roles,
   CurrentUser,
   AuthenticatedUser,
+  Public,
 } from '@app/modules/auth/decorators';
 import { TenantService } from '../services/tenant.service';
 import { TenantManagementService } from '../services/tenant-management.service';
 import { UserService } from '@app/modules/user/services/user.service';
 import { RoleService } from '@app/modules/role/services/role.service';
-import { InviteMemberDto, UpdateMemberRoleDto, UpdateTenantDto } from '../dto';
+import {
+  InviteMemberDto,
+  UpdateMemberRoleDto,
+  UpdateTenantDto,
+  GetTenantsByEmailDto,
+} from '../dto';
 
 @ApiTags('Organizations')
 @ApiBearerAuth()
@@ -41,6 +47,55 @@ export class TenantController {
     private readonly userService: UserService,
     private readonly roleService: RoleService,
   ) {}
+
+  @Post('by-email')
+  @Public()
+  @ApiOperation({
+    summary: 'Get tenants associated with an email',
+    description:
+      'Public endpoint to retrieve all organizations/tenants associated with a user email. Use this before authentication to show available organizations.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Tenants retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          slug: { type: 'string', example: 'acme-corporation' },
+          company_name: { type: 'string', example: 'Acme Corporation' },
+          role: {
+            type: 'string',
+            example: 'owner',
+            enum: ['owner', 'admin', 'member'],
+          },
+          members: { type: 'number', example: 5 },
+          logo: { type: 'string', nullable: true },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid email format',
+  })
+  async getTenantsByEmail(@Body() dto: GetTenantsByEmailDto) {
+    const tenants = await this.tenantManagementService.getTenantsByEmail(
+      dto.email,
+    );
+
+    // Return minimal info for security - only what's needed for organization selection
+    return tenants.map((tenant) => ({
+      id: tenant.id,
+      slug: tenant.slug,
+      company_name: tenant.company_name,
+      role: tenant.role,
+      members: tenant.members,
+      logo: tenant.logo,
+    }));
+  }
 
   @Get()
   @ApiOperation({ summary: "Get current user's organization" })
