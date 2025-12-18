@@ -1,5 +1,11 @@
 import { Expose, plainToInstance, Transform } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, validateSync } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  validateSync,
+} from 'class-validator';
 
 import { Environment } from 'src/common/enums';
 
@@ -87,14 +93,17 @@ export class EnvironmentVariables {
   @Expose()
   AUTO_SETUP_MULTITENANCY: string;
 
+  @IsOptional()
   @IsString()
   @Expose()
   GOOGLE_CLIENT_ID: string;
 
+  @IsOptional()
   @IsString()
   @Expose()
   GOOGLE_CLIENT_SECRET: string;
 
+  @IsOptional()
   @IsString()
   @Expose()
   GOOGLE_CALLBACK_URL: string;
