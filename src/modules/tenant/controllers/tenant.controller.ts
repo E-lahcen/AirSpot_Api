@@ -144,8 +144,8 @@ export class TenantController {
     return tenant;
   }
 
-  @Patch()
-  @ApiOperation({ summary: 'Update current organization' })
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update organization by ID' })
   @ApiResponse({
     status: 200,
     description: 'Organization updated successfully',
@@ -170,37 +170,11 @@ export class TenantController {
   })
   @Roles('owner', 'admin', 'super_admin')
   async updateOrganization(
+    @Param('id', ParseUUIDPipe) tenantId: string,
     @Body() updateTenantDto: UpdateTenantDto,
-    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const tenantSlug = user.slug || this.tenantService.getSlug();
-    if (!tenantSlug) {
-      throw new NotFoundException({
-        message: 'Tenant not found',
-        errors: [
-          {
-            code: 'TENANT_NOT_FOUND',
-            message: 'Unable to determine tenant for current user',
-          },
-        ],
-      });
-    }
-
-    const tenant = await this.tenantManagementService.findBySlug(tenantSlug);
-    if (!tenant) {
-      throw new NotFoundException({
-        message: 'Tenant not found',
-        errors: [
-          {
-            code: 'TENANT_NOT_FOUND',
-            message: `No tenant found with slug: ${tenantSlug}`,
-          },
-        ],
-      });
-    }
-
     const updatedTenant = await this.tenantManagementService.updateTenant(
-      tenant.id,
+      tenantId,
       updateTenantDto,
     );
 

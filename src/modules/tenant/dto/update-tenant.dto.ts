@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsBoolean, IsUrl } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class UpdateTenantDto {
   @ApiPropertyOptional({
@@ -22,8 +23,11 @@ export class UpdateTenantDto {
     description: 'Company logo URL',
     example: 'https://example.com/logo.png',
   })
-  @IsUrl()
   @IsOptional()
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
+  @IsUrl({}, { message: 'logo must be a valid URL' })
   logo?: string;
 
   @ApiPropertyOptional({
