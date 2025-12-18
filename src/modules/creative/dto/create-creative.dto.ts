@@ -26,7 +26,7 @@ export class CreateCreativeDto {
   @ValidateIf(
     (o: CreateCreativeDto) => o.brand_id !== '' && o.brand_id !== null,
   )
-  @IsUUID()
+  // @IsUUID()
   brand_id?: string;
 
   @ApiProperty({ description: 'Creative name', example: 'Summer' })
