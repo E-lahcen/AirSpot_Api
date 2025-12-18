@@ -36,8 +36,10 @@ export class VideoValidationUtil {
     // Get video metadata using ffprobe
     const metadata = await this.getVideoMetadata(buffer);
 
-    // Validate format - MP4 container can be reported as 'mp4' or 'mov,mp4,m4a,3gp,3g2,mj2'
-    const isValidFormat = metadata.format.includes('mp4');
+    // Validate format - MP4 container can be reported as 'mp4', 'mov', or 'mov,mp4,m4a,3gp,3g2,mj2'
+    // MOV and MP4 are essentially the same container format (MP4 is based on QuickTime MOV)
+    const isValidFormat =
+      metadata.format.includes('mp4') || metadata.format.includes('mov');
 
     if (!isValidFormat) {
       throw new BadRequestException({
