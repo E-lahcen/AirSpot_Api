@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, FindOperator } from 'typeorm';
 import { Brand } from '../entities/brand.entity';
 import { CreateBrandDto, UpdateBrandDto, FilterBrandDto } from '../dto';
 
@@ -54,7 +54,7 @@ export class BrandService {
 
     interface WhereCondition {
       tenant_id?: string;
-      name?: ReturnType<typeof Like>;
+      name?: FindOperator<string>;
       is_active?: boolean;
     }
 
