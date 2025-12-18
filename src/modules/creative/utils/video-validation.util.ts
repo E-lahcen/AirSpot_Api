@@ -55,36 +55,36 @@ export class VideoValidationUtil {
     }
 
     // Validate resolution
-    if (metadata.width !== 1920 || metadata.height !== 1080) {
-      throw new BadRequestException({
-        message: 'Invalid video resolution',
-        errors: [
-          {
-            code: 'INVALID_RESOLUTION',
-            message: 'Video resolution must be 1920x1080 pixels',
-            details: `Found: ${metadata.width}x${metadata.height}`,
-          },
-        ],
-      });
-    }
+    // if (metadata.width !== 1920 || metadata.height !== 1080) {
+    //   throw new BadRequestException({
+    //     message: 'Invalid video resolution',
+    //     errors: [
+    //       {
+    //         code: 'INVALID_RESOLUTION',
+    //         message: 'Video resolution must be 1920x1080 pixels',
+    //         details: `Found: ${metadata.width}x${metadata.height}`,
+    //       },
+    //     ],
+    //   });
+    // }
 
     // Validate aspect ratio (16:9)
-    const expectedAspectRatio = 16 / 9;
-    const actualAspectRatio = metadata.width / metadata.height;
-    const tolerance = 0.01; // Allow small rounding differences
+    // const expectedAspectRatio = 16 / 9;
+    // const actualAspectRatio = metadata.width / metadata.height;
+    // const tolerance = 0.01; // Allow small rounding differences
 
-    if (Math.abs(actualAspectRatio - expectedAspectRatio) > tolerance) {
-      throw new BadRequestException({
-        message: 'Invalid aspect ratio',
-        errors: [
-          {
-            code: 'INVALID_ASPECT_RATIO',
-            message: 'Video aspect ratio must be 16:9',
-            details: `Found: ${metadata.aspectRatio}`,
-          },
-        ],
-      });
-    }
+    // if (Math.abs(actualAspectRatio - expectedAspectRatio) > tolerance) {
+    //   throw new BadRequestException({
+    //     message: 'Invalid aspect ratio',
+    //     errors: [
+    //       {
+    //         code: 'INVALID_ASPECT_RATIO',
+    //         message: 'Video aspect ratio must be 16:9',
+    //         details: `Found: ${metadata.aspectRatio}`,
+    //       },
+    //     ],
+    //   });
+    // }
 
     return metadata;
   }

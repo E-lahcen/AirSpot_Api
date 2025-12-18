@@ -995,4 +995,68 @@ export const TENANT_MIGRATIONS: TenantMigration[] = [
       `);
     },
   },
+  {
+    version: 1734544832000,
+    name: 'AddVideoMetadataToCreatives',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Add video metadata columns to creatives table
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."creatives"
+        ADD COLUMN IF NOT EXISTS "video_width" integer,
+        ADD COLUMN IF NOT EXISTS "video_height" integer,
+        ADD COLUMN IF NOT EXISTS "video_duration" numeric(10,2),
+        ADD COLUMN IF NOT EXISTS "video_format" character varying(50)
+      `);
+
+      // Add index on video metadata for potential filtering/querying
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_creatives_video_dimensions"
+        ON "${schema}"."creatives" ("video_width", "video_height")
+      `);
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop index
+      await queryRunner.query(`
+        DROP INDEX IF EXISTS "${schema}"."IDX_creatives_video_dimensions"
+      `);
+
+      // Remove columns
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."creatives"
+        DROP COLUMN IF EXISTS "video_width",
+        DROP COLUMN IF EXISTS "video_height",
+        DROP COLUMN IF EXISTS "video_duration",
+        DROP COLUMN IF EXISTS "video_format"
+      `);
+    },
+  },
+  {
+    version: 1734545132000,
+    name: 'AddBrandIdToCreatives',
+    up: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Add brand_id column to creatives table
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."creatives"
+        ADD COLUMN IF NOT EXISTS "brand_id" uuid
+      `);
+
+      // Add index on brand_id for better query performance
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_creatives_brand_id"
+        ON "${schema}"."creatives" ("brand_id")
+      `);
+    },
+    down: async (queryRunner: QueryRunner, schema: string): Promise<void> => {
+      // Drop index
+      await queryRunner.query(`
+        DROP INDEX IF EXISTS "${schema}"."IDX_creatives_brand_id"
+      `);
+
+      // Remove column
+      await queryRunner.query(`
+        ALTER TABLE "${schema}"."creatives"
+        DROP COLUMN IF EXISTS "brand_id"
+      `);
+    },
+  },
 ];
