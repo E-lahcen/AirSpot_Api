@@ -9,6 +9,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class CreateCreativeDto {
   @ApiProperty({
@@ -23,11 +24,19 @@ export class CreateCreativeDto {
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsOptional()
-  @ValidateIf(
-    (o: CreateCreativeDto) => o.brand_id !== '' && o.brand_id !== null,
-  )
-  // @IsUUID()
-  brand_id?: string;
+  @Transform(({ value }): string | null => {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    return value as string;
+  })
+  @ValidateIf((object): boolean => {
+    const o = object as CreateCreativeDto;
+    const brandId = o.brand_id;
+    return !!(brandId && brandId !== '');
+  })
+  @IsUUID()
+  brand_id?: string | null;
 
   @ApiProperty({ description: 'Creative name', example: 'Summer' })
   @IsString()
