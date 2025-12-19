@@ -190,11 +190,6 @@ export class AppModule implements NestModule, OnModuleDestroy {
           method: RequestMethod.ALL,
           version: '1',
         },
-        {
-          path: '/template-storyboards',
-          method: RequestMethod.ALL,
-          version: '1',
-        },
       )
       .forRoutes('/');
   }

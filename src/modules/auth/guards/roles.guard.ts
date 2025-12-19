@@ -36,6 +36,13 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
+    // Check if user has roles array (might be undefined for non-tenant routes)
+    if (!user.roles || !Array.isArray(user.roles)) {
+      throw new ForbiddenException(
+        'User roles not available. This endpoint may require tenant context.',
+      );
+    }
+
     // Check if user has any of the required roles
     const hasRole = user.roles.some((r) => requiredRoles.includes(r.name));
     if (!hasRole) {

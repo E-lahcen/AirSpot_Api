@@ -16,7 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard, RolesGuard } from '@app/modules/auth/guards';
-import { Roles, SkipTenant } from '@app/modules/auth/decorators';
+import { Roles } from '@app/modules/auth/decorators';
 import { TemplateStoryboardService } from '../services/template-storyboard.service';
 import {
   CreateTemplateStoryboardDto,
@@ -27,7 +27,6 @@ import {
 @ApiTags('template-storyboards')
 @ApiBearerAuth()
 @UseGuards(AuthGuard, RolesGuard)
-@SkipTenant()
 @Controller('template-storyboards')
 export class TemplateStoryboardController {
   constructor(

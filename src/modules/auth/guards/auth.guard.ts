@@ -62,21 +62,44 @@ export class AuthGuard implements CanActivate {
       const slug = this.tenantService.getSlug();
       const firebaseTenantId = this.tenantService.getFirebaseTenantId();
 
-      // For routes that skip tenant, verify token using default auth
+      // For routes that skip tenant validation requirement
       if (skipTenant) {
-        // Verify token without tenant context
-        const decodedToken: DecodedIdToken =
-          await this.auth.verifyIdToken(token);
+        // Even for skipTenant routes, we might need tenant context for user lookup
+        // If tenant context exists, use it; otherwise proceed without it
+        if (slug && firebaseTenantId) {
+          // Verify token with tenant auth if available
+          const tenantAuth = this.auth
+            .tenantManager()
+            .authForTenant(firebaseTenantId);
+          const decodedToken: DecodedIdToken =
+            await tenantAuth.verifyIdToken(token);
 
-        const user = await this.userService.findByFirebaseUid(decodedToken.uid);
+          const user = await this.userService.findByFirebaseUid(
+            decodedToken.uid,
+          );
 
-        // Attach user info to request without tenant context
-        request.user = {
-          ...user,
-          firebaseTenantId: '',
-          tenantId: '',
-          slug: '',
-        };
+          // Attach user info to request with tenant context
+          request.user = {
+            ...user,
+            firebaseTenantId: firebaseTenantId,
+            tenantId: user?.id || '',
+            slug: slug,
+          };
+        } else {
+          // No tenant context available - verify with default auth
+          const decodedToken: DecodedIdToken =
+            await this.auth.verifyIdToken(token);
+
+          // Attach minimal user info without tenant context
+          request.user = {
+            id: decodedToken.uid,
+            email: decodedToken.email || '',
+            firebaseTenantId: '',
+            tenantId: '',
+            slug: '',
+            roles: [],
+          } as AuthenticatedUser;
+        }
 
         return true;
       }
