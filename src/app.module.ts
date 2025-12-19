@@ -23,6 +23,7 @@ import { AudienceModule } from './modules/audience/audience.module';
 import { VideoDownloadModule } from './modules/video-download/video-download.module';
 import { TemplateModule } from './modules/template/template.module';
 import { StoryboardModule } from './modules/storyboard/storyboard.module';
+import { TemplateStoryboardModule } from './modules/template-storyboard/template-storyboard.module';
 import { OrganisationModule } from './modules/organisation/organisation.module';
 import { UserTenantModule } from './modules/user-tenant/user-tenant.module';
 import { InvitationModule } from './modules/invitation/invitation.module';
@@ -50,6 +51,7 @@ import { BrandModule } from './modules/brand/brand.module';
     VideoDownloadModule,
     TemplateModule,
     StoryboardModule,
+    TemplateStoryboardModule,
     OrganisationModule,
     InvitationModule,
     StorageModule,
@@ -185,6 +187,11 @@ export class AppModule implements NestModule, OnModuleDestroy {
         },
         {
           path: '/video-download/public',
+          method: RequestMethod.ALL,
+          version: '1',
+        },
+        {
+          path: '/template-storyboards',
           method: RequestMethod.ALL,
           version: '1',
         },

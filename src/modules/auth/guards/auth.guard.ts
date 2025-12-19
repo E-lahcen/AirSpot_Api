@@ -11,6 +11,7 @@ import { Request } from 'express';
 import { FIREBASE_AUTH } from '@app/modules/firebase/firebase.constants';
 import { TenantService } from '@app/modules/tenant/services/tenant.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { SKIP_TENANT_KEY } from '../decorators/skip-tenant.decorator';
 import { AuthenticatedUser } from '../decorators/current-user.decorator';
 import { UserService } from '@app/modules/user/services/user.service';
 
@@ -41,6 +42,12 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    // Check if route should skip tenant context requirement
+    const skipTenant = this.reflector.getAllAndOverride<boolean>(
+      SKIP_TENANT_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
     const request = context
       .switchToHttp()
       .getRequest<Request & { user: AuthenticatedUser }>();
@@ -54,6 +61,25 @@ export class AuthGuard implements CanActivate {
       // Get tenant slug and Firebase tenant ID from request (set by TenantMiddleware)
       const slug = this.tenantService.getSlug();
       const firebaseTenantId = this.tenantService.getFirebaseTenantId();
+
+      // For routes that skip tenant, verify token using default auth
+      if (skipTenant) {
+        // Verify token without tenant context
+        const decodedToken: DecodedIdToken =
+          await this.auth.verifyIdToken(token);
+
+        const user = await this.userService.findByFirebaseUid(decodedToken.uid);
+
+        // Attach user info to request without tenant context
+        request.user = {
+          ...user,
+          firebaseTenantId: '',
+          tenantId: '',
+          slug: '',
+        };
+
+        return true;
+      }
 
       if (!slug || !firebaseTenantId) {
         throw new UnauthorizedException('Tenant context not found');

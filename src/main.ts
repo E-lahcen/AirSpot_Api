@@ -76,6 +76,15 @@ function setupSwagger(app: INestApplication): INestApplication {
       },
       'x-tenant-slug',
     )
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'x-tenant-slug',
+        in: 'header',
+        description: 'Tenant header for multi-tenancy',
+      },
+      'x-tenant-slug',
+    )
     .addTag('Airspot Services')
     .build();
 
@@ -107,6 +116,7 @@ async function bootstrap() {
         'Content-Type',
         'Authorization',
         'x-tenant-slug',
+        'x-tenant',
         'Accept',
         'Origin',
         'X-Requested-With',
