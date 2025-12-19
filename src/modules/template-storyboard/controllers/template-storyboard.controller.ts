@@ -16,7 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard, RolesGuard } from '@app/modules/auth/guards';
-import { Roles } from '@app/modules/auth/decorators';
+import { Roles, Public } from '@app/modules/auth/decorators';
 import { TemplateStoryboardService } from '../services/template-storyboard.service';
 import {
   CreateTemplateStoryboardDto,
@@ -51,6 +51,7 @@ export class TemplateStoryboardController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Get all template storyboards' })
   @ApiResponse({
     status: 200,
@@ -61,6 +62,7 @@ export class TemplateStoryboardController {
   }
 
   @Get(':id')
+  @Public()
   @ApiOperation({ summary: 'Get a template storyboard by ID' })
   @ApiResponse({ status: 200, description: 'Template storyboard retrieved' })
   @ApiResponse({ status: 404, description: 'Template storyboard not found' })
