@@ -563,7 +563,7 @@ For role-based access control:
 
 ```typescript
 @UseGuards(AuthGuard, RolesGuard)
-@Roles('owner', 'admin')
+@Roles('owner', 'admin', 'super_admin')
 @Delete('campaigns/:id')
 async deleteCampaign() { ... }
 ```

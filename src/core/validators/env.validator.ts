@@ -107,6 +107,16 @@ export class EnvironmentVariables {
   @IsString()
   @Expose()
   GOOGLE_CALLBACK_URL: string;
+
+  @IsOptional()
+  @IsString()
+  @Expose()
+  DB_LOGGING: string;
+
+  @IsOptional()
+  @IsString()
+  @Expose()
+  API_LOGGING: string;
 }
 
 export const validateEnvVariables = (config: EnvironmentVariables) => {

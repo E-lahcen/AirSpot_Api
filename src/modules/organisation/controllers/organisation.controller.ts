@@ -27,7 +27,7 @@ export class OrganisationController {
     status: 201,
     description: 'Organization created successfully',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async createOrganization(
     @Body() dto: CreateOrganizationDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -53,7 +53,7 @@ export class OrganisationController {
     status: 200,
     description: 'List of organizations for the owner retrieved successfully',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async getOrganizationsByOwner(
     @Param('userId', ParseUUIDPipe) userId: string,
   ) {

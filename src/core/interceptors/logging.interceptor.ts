@@ -13,7 +13,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  constructor(private readonly NODE_ENV: `${Environment}`) {}
+  constructor(
+    private readonly NODE_ENV: `${Environment}`,
+    private readonly isEnabled: boolean = true,
+  ) {}
 
   private readonly logger = new Logger(LoggingInterceptor.name);
 
@@ -30,6 +33,11 @@ export class LoggingInterceptor implements NestInterceptor {
   }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    // Skip logging if disabled
+    if (!this.isEnabled) {
+      return next.handle();
+    }
+
     const request = context.switchToHttp().getRequest<
       Request & {
         query: Record<string, string>;

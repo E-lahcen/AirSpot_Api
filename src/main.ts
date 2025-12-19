@@ -21,10 +21,14 @@ function setupGlobalMiddlewares(appConfig: AppConfig) {
   const { globalPrefix, defaultVersion, env } = appConfig;
 
   return function (app: INestApplication) {
+    const isApiLoggingEnabled = env.get('API_LOGGING') === 'true';
+
     app
       .setGlobalPrefix(globalPrefix)
       .useGlobalFilters(new TypeOrmErrorsFilter())
-      .useGlobalInterceptors(new LoggingInterceptor(env.get('NODE_ENV')))
+      .useGlobalInterceptors(
+        new LoggingInterceptor(env.get('NODE_ENV'), isApiLoggingEnabled),
+      )
       .useGlobalPipes(
         new ValidationPipe({
           whitelist: true,

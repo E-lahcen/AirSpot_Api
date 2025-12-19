@@ -437,7 +437,7 @@ export class TenantController {
     status: 200,
     description: 'Member removed successfully',
   })
-  @Roles('owner', 'admin')
+  @Roles('owner', 'admin', 'super_admin')
   async removeMember(
     @Param('id', ParseUUIDPipe) memberId: string,
     @CurrentUser() user: AuthenticatedUser,

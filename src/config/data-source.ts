@@ -29,7 +29,7 @@ export const dataSourceOptions: DataSourceOptions = {
     ? ['dist/src/migrations/[0-9]*-*.js']
     : ['src/migrations/[0-9]*-*.ts'],
   synchronize: false,
-  logging: true,
+  logging: process.env.DB_LOGGING === 'true',
 };
 
 const dataSource = new DataSource(dataSourceOptions);

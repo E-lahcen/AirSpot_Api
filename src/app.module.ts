@@ -66,7 +66,7 @@ import { BrandModule } from './modules/brand/brand.module';
         host: configService.get<string>('DB_HOST'),
         port: configService.get<number>('DB_PORT'),
         database: configService.get<string>('DB_NAME'),
-        logging: true,
+        logging: configService.get<string>('DB_LOGGING') === 'true',
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         synchronize: false,
