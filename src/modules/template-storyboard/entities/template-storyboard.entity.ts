@@ -1,7 +1,7 @@
 import { Entity, Column } from 'typeorm';
 import { BaseEntity } from '@app/common/entities/base.entity';
 
-@Entity('template_storyboards')
+@Entity({ name: 'template_storyboards', schema: 'public' })
 export class TemplateStoryboard extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   title: string;

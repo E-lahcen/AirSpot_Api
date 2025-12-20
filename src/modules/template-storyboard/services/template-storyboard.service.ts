@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, Like } from 'typeorm';
+import { Repository } from 'typeorm';
 import { paginate, Pagination } from 'nestjs-typeorm-paginate';
 import { randomUUID } from 'crypto';
 import {
@@ -38,27 +38,37 @@ export class TemplateStoryboardService {
   async findAll(
     filterDto: FilterTemplateStoryboardDto,
   ): Promise<Pagination<TemplateStoryboard>> {
-    const where: FindOptionsWhere<TemplateStoryboard> = {};
-
-    if (filterDto?.title) {
-      where.title = Like(`%${filterDto.title}%`);
-    }
-
+    // Create query builder and explicitly set it to query from public schema
     const queryBuilder = this.templateStoryboardRepository
       .createQueryBuilder('template_storyboard')
-      .orderBy('template_storyboard.created_at', 'DESC');
+      .setQueryRunner(
+        this.templateStoryboardRepository.manager.connection.createQueryRunner(),
+      );
 
-    if (Object.keys(where).length > 0) {
-      queryBuilder.where(where);
+    // Use raw SQL to ensure we query from public schema
+    await queryBuilder.connection.query('SET search_path TO public');
+
+    if (filterDto?.title) {
+      queryBuilder.where('template_storyboard.title ILIKE :title', {
+        title: `%${filterDto.title}%`,
+      });
     }
 
-    return paginate<TemplateStoryboard>(queryBuilder, {
+    queryBuilder.orderBy('template_storyboard.created_at', 'DESC');
+
+    const result = await paginate<TemplateStoryboard>(queryBuilder, {
       page: filterDto.page || 1,
       limit: filterDto.limit || 10,
     });
+
+    // Reset search path
+    await queryBuilder.connection.query('RESET search_path');
+
+    return result;
   }
 
   async findOne(id: string): Promise<TemplateStoryboard> {
+    // Since entity has schema: 'public', this will query public.template_storyboards
     const templateStoryboard = await this.templateStoryboardRepository.findOne({
       where: { id },
     });
