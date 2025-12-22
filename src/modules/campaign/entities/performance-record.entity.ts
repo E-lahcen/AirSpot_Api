@@ -39,6 +39,12 @@ export class PerformanceRecord {
   @Column({ type: 'decimal', precision: 10, scale: 6 })
   cpm: number;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  vcr: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  bids: number | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 

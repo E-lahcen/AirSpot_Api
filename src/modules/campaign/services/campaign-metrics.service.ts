@@ -44,7 +44,7 @@ export class CampaignMetricsService {
         // 2. Upsert Performance Records
         const performanceRepo =
           transactionManager.getRepository(PerformanceRecord);
-        const performanceRecords = [];
+        const performanceRecords: PerformanceRecord[] = [];
 
         for (const record of dto.performanceRecords) {
           // Check if record exists
@@ -63,7 +63,10 @@ export class CampaignMetricsService {
               impressions: record.impressions,
               spend: record.spend,
               cpm: record.cpm,
+              vcr: record.vcr,
+              bids: record.bids,
             });
+
             performanceRecords.push(existing);
           } else {
             // Create new record
@@ -75,15 +78,17 @@ export class CampaignMetricsService {
               impressions: record.impressions,
               spend: record.spend,
               cpm: record.cpm,
+              vcr: record.vcr,
+              bids: record.bids,
             });
-            const saved = await performanceRepo.save(newRecord);
-            performanceRecords.push(saved);
+
+            performanceRecords.push(await performanceRepo.save(newRecord));
           }
         }
 
         // 3. Upsert Time Distribution
         const timeDistRepo = transactionManager.getRepository(TimeDistribution);
-        const timeDistributions = [];
+        const timeDistributions: TimeDistribution[] = [];
 
         for (const dist of dto.timeDistribution) {
           const existing = await timeDistRepo.findOne({
@@ -108,8 +113,7 @@ export class CampaignMetricsService {
               impressions: dist.impressions,
               percentage: dist.percentage,
             });
-            const saved = await timeDistRepo.save(newDist);
-            timeDistributions.push(saved);
+            timeDistributions.push(await timeDistRepo.save(newDist));
           }
         }
 
@@ -148,11 +152,20 @@ export class CampaignMetricsService {
           },
         });
 
+        // handle alias mapping for averageVCR
+        const avgVCR =
+          typeof dto.campaignSummary.averageVCR === 'number'
+            ? dto.campaignSummary.averageVCR
+            : typeof dto.campaignSummary.vscr === 'number'
+              ? dto.campaignSummary.vscr
+              : null;
+
         if (summary) {
           await summaryRepo.update(summary.id, {
             totalImpressions: dto.campaignSummary.totalImpressions,
             totalSpend: dto.campaignSummary.totalSpend,
             averageCPM: dto.campaignSummary.averageCPM,
+            averageVCR: avgVCR,
             uniqueHouseholds: dto.campaignSummary.uniqueHouseholds,
             averageFrequency: dto.campaignSummary.averageFrequency,
             totalPublishers: dto.campaignSummary.totalPublishers,
@@ -168,6 +181,7 @@ export class CampaignMetricsService {
             totalImpressions: dto.campaignSummary.totalImpressions,
             totalSpend: dto.campaignSummary.totalSpend,
             averageCPM: dto.campaignSummary.averageCPM,
+            averageVCR: avgVCR,
             uniqueHouseholds: dto.campaignSummary.uniqueHouseholds,
             averageFrequency: dto.campaignSummary.averageFrequency,
             totalPublishers: dto.campaignSummary.totalPublishers,

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS performance_records (
     impressions BIGINT NOT NULL,
     spend DECIMAL(12, 2) NOT NULL,
     cpm DECIMAL(10, 6) NOT NULL,
+    vcr DECIMAL(5, 2),
     "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
     "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS campaign_summaries (
     "totalImpressions" BIGINT NOT NULL,
     "totalSpend" DECIMAL(12, 2) NOT NULL,
     "averageCPM" DECIMAL(10, 2) NOT NULL,
+    "averageVCR" DECIMAL(5, 2),
     "uniqueHouseholds" DECIMAL(12, 1) NOT NULL,
     "averageFrequency" DECIMAL(5, 2) NOT NULL,
     "totalPublishers" INTEGER NOT NULL,

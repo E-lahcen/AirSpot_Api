@@ -45,6 +45,19 @@ export class PerformanceRecordDto {
   @IsNumber()
   cpm: number;
 
+  @ApiProperty({
+    required: false,
+    description: 'Video Completion Rate in % (0-100)',
+  })
+  @IsOptional()
+  @IsNumber()
+  vcr?: number;
+
+  @ApiProperty({ required: false, description: 'Number of bids' })
+  @IsOptional()
+  @IsNumber()
+  bids?: number;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsDate()
@@ -161,6 +174,23 @@ export class CampaignSummaryDto {
   @ApiProperty()
   @IsNumber()
   averageCPM: number;
+
+  @ApiProperty({
+    required: false,
+    description: 'Average Video Completion Rate in % (0-100)',
+  })
+  @IsOptional()
+  @IsNumber()
+  averageVCR?: number;
+
+  // Alias accepted in payloads (vscr) -> mapped to averageVCR in service
+  @ApiProperty({
+    required: false,
+    description: 'Alias for averageVCR (0-100%)',
+  })
+  @IsOptional()
+  @IsNumber()
+  vscr?: number;
 
   @ApiProperty()
   @IsNumber()

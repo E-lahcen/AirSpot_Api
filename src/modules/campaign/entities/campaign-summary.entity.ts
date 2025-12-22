@@ -32,6 +32,10 @@ export class CampaignSummary {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   averageCPM: number;
 
+  // Average Video Completion Rate in percent (0 - 100)
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  averageVCR: number | null;
+
   @Column({ type: 'decimal', precision: 12, scale: 1 })
   uniqueHouseholds: number;
 
