@@ -23,11 +23,11 @@ export enum CampaignGoal {
   CONVERSIONS = 'CONVERSIONS',
   TRAFFIC = 'TRAFFIC',
   RETARGET = 'RETARGET',
+  APP_REVENUE = 'APP_REVENUE',
   APP = 'APP',
   AUTOMATIC = 'AUTOMATIC',
   LEADS = 'LEADS',
   SALES = 'SALES',
-  APP_REVENUE = 'APP_REVENUE',
 }
 
 export enum BudgetType {
