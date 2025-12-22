@@ -9,11 +9,17 @@ import {
   UseGuards,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { CampaignService } from '../services';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
+import { CampaignService, CampaignMetricsService } from '../services';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
 import { UpdateCampaignDto } from '../dto/update-campaign.dto';
 import { FilterCampaignDto } from '../dto/filter-campaign.dto';
+import { BulkUpsertCampaignMetricsDto } from '../dto/bulk-upsert-metrics.dto';
 import { AuthGuard } from '../../auth/guards';
 import { AuthenticatedUser, CurrentUser } from '../../auth/decorators';
 import {
@@ -29,7 +35,10 @@ import {
 @UseGuards(AuthGuard)
 @Controller('campaigns')
 export class CampaignController {
-  constructor(private readonly campaignService: CampaignService) {}
+  constructor(
+    private readonly campaignService: CampaignService,
+    private readonly campaignMetricsService: CampaignMetricsService,
+  ) {}
 
   @Post()
   @ApiCreateCampaign()
@@ -69,5 +78,55 @@ export class CampaignController {
   @ApiDeleteCampaign()
   remove(@Param('id') id: string) {
     return this.campaignService.remove(id);
+  }
+
+  @Post('import')
+  @ApiOperation({
+    summary: 'Bulk upsert campaign metrics',
+    description:
+      'Insert or update campaign performance records, time distribution, reach metrics, and summary data',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Campaign metrics have been successfully upserted.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request payload.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Campaign not found.',
+  })
+  bulkUpsertMetrics(
+    @Body() bulkUpsertDto: BulkUpsertCampaignMetricsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    // Ensure the tenantId matches the authenticated user's tenant
+    bulkUpsertDto.tenantId = user.tenantId;
+    return this.campaignMetricsService.bulkUpsertMetrics(bulkUpsertDto);
+  }
+
+  @Get(':campaignId/metrics')
+  @ApiOperation({
+    summary: 'Get campaign metrics',
+    description: 'Retrieve all metrics data for a specific campaign',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Campaign metrics retrieved successfully.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Campaign not found.',
+  })
+  getCampaignMetrics(
+    @Param('campaignId') campaignId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.campaignMetricsService.getCampaignMetrics(
+      campaignId,
+      user.tenantId,
+    );
   }
 }

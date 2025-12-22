@@ -2,6 +2,7 @@ import {
   Entity,
   Column,
   OneToMany,
+  OneToOne,
   ManyToOne,
   ManyToMany,
   JoinTable,
@@ -12,12 +13,20 @@ import { BaseEntity } from '@app/common/entities/base.entity';
 import { User } from '@app/modules/user/entities/user.entity';
 import { Task } from '../../task/entities/task.entity';
 import { Audience } from '../../audience/entities/audience.entity';
+import { PerformanceRecord } from './performance-record.entity';
+import { TimeDistribution } from './time-distribution.entity';
+import { ReachMetrics } from './reach-metrics.entity';
+import { CampaignSummary } from './campaign-summary.entity';
 
 export enum CampaignGoal {
   AWARENESS = 'AWARENESS',
   CONVERSIONS = 'CONVERSIONS',
   TRAFFIC = 'TRAFFIC',
   RETARGET = 'RETARGET',
+  APP = 'APP',
+  AUTOMATIC = 'AUTOMATIC',
+  LEADS = 'LEADS',
+  SALES = 'SALES',
   APP_REVENUE = 'APP_REVENUE',
 }
 
@@ -131,4 +140,17 @@ export class Campaign extends BaseEntity {
 
   @OneToMany(() => Task, (task) => task.campaign)
   tasks: Task[];
+
+  // Metrics relationships
+  @OneToMany(() => PerformanceRecord, (record) => record.campaign)
+  performanceRecords: PerformanceRecord[];
+
+  @OneToMany(() => TimeDistribution, (distribution) => distribution.campaign)
+  timeDistribution: TimeDistribution[];
+
+  @OneToOne(() => ReachMetrics, (metrics) => metrics.campaign)
+  reachMetrics: ReachMetrics;
+
+  @OneToOne(() => CampaignSummary, (summary) => summary.campaign)
+  summary: CampaignSummary;
 }

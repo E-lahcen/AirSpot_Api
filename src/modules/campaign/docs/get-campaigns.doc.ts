@@ -38,7 +38,17 @@ export function ApiGetCampaigns() {
     ApiQuery({
       name: 'goal',
       required: false,
-      enum: ['AWARENESS', 'CONVERSIONS', 'TRAFFIC', 'RETARGET', 'APP_REVENUE'],
+      enum: [
+        'AWARENESS',
+        'CONVERSIONS',
+        'TRAFFIC',
+        'RETARGET',
+        'APP',
+        'AUTOMATIC',
+        'LEADS',
+        'SALES',
+        'APP_REVENUE',
+      ],
       description: 'Filter by campaign goal',
     }),
     ApiQuery({

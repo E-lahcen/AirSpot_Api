@@ -325,7 +325,10 @@ export class CampaignService {
       { re: /(conversion|conversions|convert)/i, goal: 'CONVERSIONS' },
       { re: /(traffic|traffik)/i, goal: 'TRAFFIC' },
       { re: /(retarget|retargeting)/i, goal: 'RETARGET' },
-      { re: /(app[\s_-]?revenue|apprevenue)/i, goal: 'APP_REVENUE' },
+      {
+        re: /(app[\s_-]?revenue|apprevenue|app|application)/i,
+        goal: 'APP_REVENUE',
+      },
     ];
 
     for (const a of aliases) {

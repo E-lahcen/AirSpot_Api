@@ -3,6 +3,10 @@ export const ALLOWED_GOALS = [
   'CONVERSIONS',
   'TRAFFIC',
   'RETARGET',
+  'APP',
+  'AUTOMATIC',
+  'LEADS',
+  'SALES',
   'APP_REVENUE',
 ];
 
