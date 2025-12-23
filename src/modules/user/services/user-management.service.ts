@@ -165,10 +165,15 @@ export class UserManagementService {
       );
     }
 
-    // Apply status filter
+    // Apply tenant status filter (pending | approved | rejected)
     if (filterDto.status) {
+      const desired = String(filterDto.status).toLowerCase();
       filteredUsers = filteredUsers.filter(
-        (user) => user.user_status === filterDto.status,
+        (user: any) =>
+          Array.isArray(user.tenants) &&
+          user.tenants.some(
+            (t: any) => String(t?.status || '').toLowerCase() === desired,
+          ),
       );
     }
 

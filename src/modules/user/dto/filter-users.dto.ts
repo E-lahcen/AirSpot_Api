@@ -42,10 +42,15 @@ export class FilterUsersDto {
   @IsString()
   role?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by status', example: 'active' })
+  @ApiPropertyOptional({
+    description: 'Filter by tenant status',
+    enum: ['pending', 'approved', 'rejected'],
+    example: 'approved',
+  })
   @IsOptional()
   @IsString()
-  status?: string;
+  @IsIn(['pending', 'approved', 'rejected'])
+  status?: 'pending' | 'approved' | 'rejected';
 
   @ApiPropertyOptional({
     description: 'Sort order for creation date',

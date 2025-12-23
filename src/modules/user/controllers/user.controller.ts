@@ -44,7 +44,12 @@ export class UserController {
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'tenant_id', required: false, type: String })
   @ApiQuery({ name: 'role', required: false, type: String })
-  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['pending', 'approved', 'rejected'],
+    description: 'Filter by tenant status',
+  })
   @ApiQuery({
     name: 'sort_order',
     required: false,
