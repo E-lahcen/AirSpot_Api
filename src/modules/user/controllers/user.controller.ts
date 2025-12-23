@@ -45,6 +45,12 @@ export class UserController {
   @ApiQuery({ name: 'tenant_id', required: false, type: String })
   @ApiQuery({ name: 'role', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({
+    name: 'sort_order',
+    required: false,
+    enum: ['asc', 'desc'],
+    example: 'desc',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of users retrieved successfully',

@@ -409,11 +409,12 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     try {
-      // Step 1: Find tenant by slug
-      const userTenantResult = await this.userTenantService.findAll({
-        email: dto.email,
-      });
-      if (!userTenantResult?.items?.length) {
+      // Step 1: Resolve default tenant with priority: owner > admin > member
+      // Fetch all tenants linked to this email with role metadata
+      const tenantsForEmail =
+        await this.tenantManagementService.getTenantsByEmail(dto.email);
+
+      if (!tenantsForEmail || tenantsForEmail.length === 0) {
         throw new NotFoundException({
           message: 'Tenant not found for provided email',
           errors: [
@@ -425,7 +426,23 @@ export class AuthService {
         });
       }
 
-      const tenantSlug = userTenantResult.items[0].tenant.slug;
+      // Sort by role priority then by created_at ASC to pick the earliest tenant where user is owner
+      const rolePriority: Record<string, number> = {
+        owner: 1,
+        admin: 2,
+        super_admin: 2,
+        member: 3,
+      };
+      tenantsForEmail.sort((a, b) => {
+        const ra = rolePriority[a.role || 'member'] ?? 99;
+        const rb = rolePriority[b.role || 'member'] ?? 99;
+        if (ra !== rb) return ra - rb;
+        const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return aCreated - bCreated;
+      });
+
+      const tenantSlug = tenantsForEmail[0].slug;
       // Step 1: Find tenant by slug
       const tenant = await this.tenantManagementService.findBySlug(tenantSlug);
       if (!tenant) {
@@ -531,19 +548,62 @@ export class AuthService {
       // Step 5: Set tenant context
       this.tenantService.setTenant(tenant);
 
-      // Step 6: Get user from tenant database
-      const user = await this.userService.findByFirebaseUid(firebaseUser.uid);
+      // Step 6: Get user from tenant database (auto-provision or bind if missing)
+      let user = await this.userService.findByFirebaseUid(firebaseUser.uid);
 
       if (!user) {
-        throw new UnauthorizedException({
-          message: 'User not found in tenant database',
-          errors: [
-            {
-              code: 'USER_NOT_FOUND',
-              message: 'User record not found',
-            },
-          ],
-        });
+        // If user with email already exists, bind firebase_uid to existing record
+        const existingByEmail = await this.userService.findByEmail(dto.email);
+        if (existingByEmail) {
+          user = await this.userService.updateUser(existingByEmail.id, {
+            firebase_uid: firebaseUser.uid,
+          });
+        } else {
+          // Auto-provision user record in tenant schema
+          await this.roleService.ensureDefaultRoles();
+
+          const isOwnerEmail =
+            (tenant.owner_email || '').toLowerCase() ===
+            dto.email.toLowerCase();
+          const fallbackRoleName = isOwnerEmail ? 'owner' : 'member';
+          const fallbackRole =
+            await this.roleService.findByName(fallbackRoleName);
+
+          if (!fallbackRole) {
+            throw new UnauthorizedException({
+              message: 'User not found in tenant database',
+              errors: [
+                {
+                  code: 'USER_NOT_FOUND',
+                  message:
+                    'User record not found and fallback role is unavailable',
+                },
+              ],
+            });
+          }
+
+          const emailName = dto.email.split('@')[0];
+          const [firstName, lastName] = emailName.includes('.')
+            ? [emailName.split('.')[0], emailName.split('.').slice(1).join(' ')]
+            : [emailName, ''];
+
+          user = await this.userService.createUser({
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName}${lastName ? ' ' + lastName : ''}`,
+            company_name: tenant.company_name,
+            email: dto.email,
+            firebase_uid: firebaseUser.uid,
+            roles: [fallbackRole],
+          });
+
+          // Map user to tenant in public schema for future queries
+          await this.userTenantService.create({
+            user_id: user.id,
+            tenant_id: tenant.id,
+            email: dto.email,
+          });
+        }
       }
 
       if (tenant.status !== 'approved') {
@@ -1194,7 +1254,7 @@ export class AuthService {
    * Switch authenticated user to a different tenant
    * Validates user has access to the target tenant and generates new custom token
    */
-  async switchTenant(currentUserFirebaseUid: string, targetTenantSlug: string) {
+  async switchTenant(currentUserEmail: string, targetTenantSlug: string) {
     // Step 1: Find the target tenant
     const targetTenant =
       await this.tenantManagementService.findBySlug(targetTenantSlug);
@@ -1223,25 +1283,12 @@ export class AuthService {
       });
     }
 
-    // Step 2: Set tenant context to target tenant
-    this.tenantService.setTenant(targetTenant);
+    // Step 2: We already have current user's email from the authenticated context
+    // Avoid Firebase Admin lookups that may fail under multi-tenant projects
+    const userEmail = currentUserEmail;
 
-    // Step 3: Get current user from Firebase to retrieve email
-    let userEmail: string;
-    try {
-      const firebaseUser = await this.auth.getUser(currentUserFirebaseUid);
-      userEmail = firebaseUser.email;
-    } catch {
-      throw new UnauthorizedException({
-        message: 'Invalid user',
-        errors: [
-          {
-            code: 'INVALID_USER',
-            message: 'Unable to verify user identity',
-          },
-        ],
-      });
-    }
+    // Step 3: Set tenant context to target tenant to validate access in that tenant
+    this.tenantService.setTenant(targetTenant);
 
     // Step 4: Check if user exists in target tenant
     const userInTargetTenant = await this.userService.findByEmail(userEmail);
@@ -1292,11 +1339,66 @@ export class AuthService {
       .authForTenant(targetTenant.firebase_tenant_id);
     const customToken = await tenantAuth.createCustomToken(
       firebaseUserInTenant.uid,
+      {
+        slug: targetTenant.slug,
+        firebaseTenantId: targetTenant.firebase_tenant_id,
+      },
     );
 
-    // Step 7: Return custom token and tenant info
+    // Step 7: Immediately exchange custom token for ID token and refresh token
+    const apiKey = this.configService.get<string>('FIREBASE_WEB_API_KEY');
+    if (!apiKey) {
+      throw new BadRequestException({
+        message: 'Firebase API key not configured',
+        errors: [
+          {
+            code: 'MISSING_CONFIG',
+            message: 'FIREBASE_WEB_API_KEY environment variable is required',
+          },
+        ],
+      });
+    }
+
+    const exchangeResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: customToken,
+          returnSecureToken: true,
+          tenantId: targetTenant.firebase_tenant_id,
+        }),
+      },
+    );
+
+    if (!exchangeResponse.ok) {
+      const err = (await exchangeResponse.json()) as {
+        error?: { message?: string };
+      };
+      throw new BadRequestException({
+        message: 'Token exchange failed',
+        errors: [
+          {
+            code: 'TOKEN_EXCHANGE_FAILED',
+            message: err.error?.message || 'Failed to exchange custom token',
+          },
+        ],
+      });
+    }
+
+    const exchangeData = (await exchangeResponse.json()) as {
+      idToken: string;
+      refreshToken: string;
+      expiresIn: string;
+    };
+
+    // Step 8: Return tokens and tenant info
     return {
       custom_token: customToken,
+      id_token: exchangeData.idToken,
+      refresh_token: exchangeData.refreshToken,
+      expires_in: exchangeData.expiresIn,
       firebase_tenant_id: targetTenant.firebase_tenant_id,
       user: userInTargetTenant,
       tenant: targetTenant,

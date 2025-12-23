@@ -113,13 +113,86 @@ export class AuthGuard implements CanActivate {
         .tenantManager()
         .authForTenant(firebaseTenantId);
 
-      // Verify the Firebase ID token
-      const decodedToken: DecodedIdToken =
-        await tenantAuth.verifyIdToken(token);
+      let decodedToken: DecodedIdToken;
+      try {
+        // Verify the Firebase ID token against the expected tenant
+        decodedToken = await tenantAuth.verifyIdToken(token);
+      } catch {
+        // Secondary check: try verifying with default auth to provide clearer error messages
+        try {
+          const decodedWithDefault: DecodedIdToken =
+            await this.auth.verifyIdToken(token);
+          // If it verifies with default but not tenant, it's likely a tenant mismatch or wrong token
+          const tokenTenant = decodedWithDefault.firebase?.tenant || 'unknown';
+          throw new UnauthorizedException({
+            message: 'Token does not match tenant context',
+            errors: [
+              {
+                code: 'TENANT_MISMATCH',
+                message: `Token tenant: ${tokenTenant}, expected: ${firebaseTenantId}`,
+              },
+            ],
+          });
+        } catch {
+          // Try to decode token payload without verifying to give better diagnostics
+          const parts = token.split('.');
+          let tokenTenant = 'unknown';
+          let aud = 'unknown';
+          try {
+            if (parts.length === 3) {
+              const payloadRaw: unknown = JSON.parse(
+                Buffer.from(
+                  parts[1].replace(/-/g, '+').replace(/_/g, '/'),
+                  'base64',
+                ).toString('utf8'),
+              );
+              if (typeof payloadRaw === 'object' && payloadRaw !== null) {
+                const obj = payloadRaw as {
+                  firebase?: { tenant?: string };
+                  aud?: unknown;
+                };
+                tokenTenant =
+                  typeof obj.firebase?.tenant === 'string'
+                    ? obj.firebase.tenant
+                    : 'unknown';
+                aud = typeof obj.aud === 'string' ? obj.aud : 'unknown';
+              }
+            }
+          } catch {
+            // ignore decoding errors
+          }
+
+          // Token is not a valid Firebase ID token for this tenant or project. Provide helpful metadata.
+          const appOptions = this.auth.app?.options;
+          const expectedProjectId = appOptions?.projectId ?? 'unknown';
+          throw new UnauthorizedException({
+            message: 'Invalid authentication token',
+            errors: [
+              {
+                code: 'INVALID_ID_TOKEN',
+                message:
+                  'Provided token is not a valid Firebase ID token for this tenant. Ensure you are using id_token from switch and not a custom or refresh token.',
+              },
+              {
+                code: 'TOKEN_METADATA',
+                message: `token.aud: ${aud}, expected project: ${expectedProjectId}, token.tenant: ${tokenTenant}, expected tenant: ${firebaseTenantId}`,
+              },
+            ],
+          });
+        }
+      }
 
       // Verify token belongs to the correct tenant
       if (decodedToken.firebase.tenant !== firebaseTenantId) {
-        throw new UnauthorizedException('Token does not match tenant context');
+        throw new UnauthorizedException({
+          message: 'Token does not match tenant context',
+          errors: [
+            {
+              code: 'TENANT_MISMATCH',
+              message: `Token tenant: ${decodedToken.firebase.tenant}, expected: ${firebaseTenantId}`,
+            },
+          ],
+        });
       }
 
       // Extract custom claims
@@ -160,7 +233,15 @@ export class AuthGuard implements CanActivate {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new UnauthorizedException('Invalid authentication token');
+      throw new UnauthorizedException({
+        message: 'Invalid authentication token',
+        errors: [
+          {
+            code: 'ERROR_DETAILS',
+            message: 'Invalid authentication token',
+          },
+        ],
+      });
     }
   }
 

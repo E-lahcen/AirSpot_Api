@@ -14,12 +14,15 @@ export const ApiSwitchTenant = () =>
       summary: 'Switch to a different tenant/organization',
       description: `
         Allows an authenticated user to switch between organizations they have access to.
-        Returns a new custom token for the target tenant.
-        
-        **Steps:**
+        Returns a new custom token and immediately exchanges it for an ID token and refresh token
+        for the target tenant. Client should also set the 'x-tenant-slug' header to the switched
+        organization's slug on subsequent requests.
+
+        Steps:
         1. Verify user has access to target tenant
         2. Generate new custom token for target tenant
-        3. Frontend uses custom token to re-authenticate with new tenant
+        3. Exchange for ID token and refresh token
+        4. Use the returned ID token for Authorization and include 'x-tenant-slug' header
       `,
     }),
     ApiResponse({
@@ -31,6 +34,9 @@ export const ApiSwitchTenant = () =>
           statusCode: 200,
           data: {
             custom_token: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjU5N...',
+            id_token: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjU5N...',
+            refresh_token: 'AEu4IL2...0F',
+            expires_in: '3600',
             firebase_tenant_id: 'tenant-xyz789',
             user: {
               id: '123e4567-e89b-12d3-a456-426614174000',

@@ -106,6 +106,7 @@ export class AuthController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: SwitchTenantDto,
   ) {
-    return this.authService.switchTenant(user.firebase_uid, dto.tenantSlug);
+    // Use the authenticated user's email for tenant switch validation
+    return this.authService.switchTenant(user.email, dto.tenantSlug);
   }
 }

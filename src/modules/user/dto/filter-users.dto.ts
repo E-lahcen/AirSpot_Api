@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsUUID, IsInt, Min } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsInt,
+  Min,
+  IsIn,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -39,4 +46,13 @@ export class FilterUsersDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @ApiPropertyOptional({
+    description: 'Sort order for creation date',
+    enum: ['asc', 'desc'],
+    example: 'desc',
+  })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sort_order?: 'asc' | 'desc';
 }

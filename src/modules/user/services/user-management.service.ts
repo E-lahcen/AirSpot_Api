@@ -172,6 +172,14 @@ export class UserManagementService {
       );
     }
 
+    // Sort by creation date with configurable order (default: desc)
+    const order = (filterDto as any)?.sort_order === 'asc' ? 'asc' : 'desc';
+    filteredUsers.sort((a: any, b: any) => {
+      const aTime = a?.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b?.created_at ? new Date(b.created_at).getTime() : 0;
+      return order === 'asc' ? aTime - bTime : bTime - aTime;
+    });
+
     // Manual pagination
     const totalItems = filteredUsers.length;
     const paginatedUsers = filteredUsers.slice(offset, offset + limit);

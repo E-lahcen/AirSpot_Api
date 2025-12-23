@@ -1,7 +1,7 @@
 #!/bin/bash
 # Simple Production Migration Runner
 # This script runs migrations in production using compiled JavaScript
-# Use this in your production environment (Fly.io, AWS, Docker, etc.)
+# Use this in your production environment (AWS, Docker, etc.)
 
 set -e
 

@@ -18,23 +18,16 @@ import { TimeDistribution } from './time-distribution.entity';
 import { ReachMetrics } from './reach-metrics.entity';
 import { CampaignSummary } from './campaign-summary.entity';
 
-// export enum CampaignGoal {
-//   AWARENESS = 'AWARENESS',
-//   CONVERSIONS = 'CONVERSIONS',
-//   TRAFFIC = 'TRAFFIC',
-//   RETARGET = 'RETARGET',
-//   APP_REVENUE = 'APP_REVENUE',
-//   APP = 'APP',
-//   AUTOMATIC = 'AUTOMATIC',
-//   LEADS = 'LEADS',
-//   SALES = 'SALES',
-// }
 export enum CampaignGoal {
   AWARENESS = 'AWARENESS',
   CONVERSIONS = 'CONVERSIONS',
   TRAFFIC = 'TRAFFIC',
   RETARGET = 'RETARGET',
   APP_REVENUE = 'APP_REVENUE',
+  APP = 'APP',
+  AUTOMATIC = 'AUTOMATIC',
+  LEADS = 'LEADS',
+  SALES = 'SALES',
 }
 
 export enum BudgetType {
