@@ -246,11 +246,65 @@ export class AuthGuard implements CanActivate {
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
+    // 1) Authorization header (standard)
     const authHeader = request.headers.authorization;
-    if (!authHeader) {
-      return undefined;
+    if (authHeader && typeof authHeader === 'string') {
+      const [type, token] = authHeader.split(' ');
+      if (type === 'Bearer' && token) return token;
     }
-    const [type, token] = authHeader.split(' ');
-    return type === 'Bearer' ? token : undefined;
+
+    // 2) x-access-token header (common alternative)
+    const xAccess = request.headers['x-access-token'];
+    if (typeof xAccess === 'string' && xAccess) {
+      return xAccess;
+    }
+
+    // 3) Cookies (if frontend stores Firebase ID token as a cookie)
+    const cookieHeader = request.headers.cookie;
+    if (cookieHeader) {
+      const cookies = Object.fromEntries(
+        cookieHeader.split(';').map((c) => {
+          const idx = c.indexOf('=');
+          const k = decodeURIComponent(c.slice(0, idx).trim());
+          const v = decodeURIComponent(c.slice(idx + 1).trim());
+          return [k, v];
+        }),
+      ) as Record<string, string>;
+
+      const candidateKeys = [
+        // Common names
+        'authorization',
+        'Authorization',
+        'token',
+        'id_token',
+        'session',
+        'firebase_id_token',
+      ];
+
+      for (const key of candidateKeys) {
+        const val = cookies[key];
+        if (typeof val === 'string' && val) {
+          // Support values like "Bearer <token>" or raw token
+          const parts = val.split(' ');
+          if (parts.length === 2 && parts[0] === 'Bearer') {
+            return parts[1];
+          }
+          return val;
+        }
+      }
+    }
+
+    // 4) Query param fallback (only for debugging/edge cases)
+    const queryObj = (
+      request as unknown as {
+        query?: Record<string, unknown>;
+      }
+    ).query;
+    const qp = queryObj?.token;
+    if (typeof qp === 'string' && qp) {
+      return qp;
+    }
+
+    return undefined;
   }
 }
