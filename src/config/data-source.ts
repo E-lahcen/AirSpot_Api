@@ -30,6 +30,11 @@ export const dataSourceOptions: DataSourceOptions = {
     : ['src/migrations/[0-9]*-*.ts'],
   synchronize: false,
   logging: process.env.DB_LOGGING === 'true',
+  extra: {
+    max: 20, // Maximum pool size
+    connectionTimeoutMillis: 10000, // 10s timeout for acquiring connection
+    idleTimeoutMillis: 30000, // 30s before idle connection is closed
+  },
 };
 
 const dataSource = new DataSource(dataSourceOptions);

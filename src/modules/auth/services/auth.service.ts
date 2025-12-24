@@ -1393,7 +1393,7 @@ export class AuthService {
       expiresIn: string;
     };
 
-    // Step 8: Return tokens and tenant info
+    // Step 8: Return tokens and complete tenant info with all fields
     return {
       custom_token: customToken,
       id_token: exchangeData.idToken,
@@ -1401,7 +1401,26 @@ export class AuthService {
       expires_in: exchangeData.expiresIn,
       firebase_tenant_id: targetTenant.firebase_tenant_id,
       user: userInTargetTenant,
-      tenant: targetTenant,
+      tenant: {
+        id: targetTenant.id,
+        slug: targetTenant.slug,
+        company_name: targetTenant.company_name,
+        schema_name: targetTenant.schema_name,
+        firebase_tenant_id: targetTenant.firebase_tenant_id,
+        owner_email: targetTenant.owner_email,
+        owner_id: targetTenant.owner_id,
+        is_active: targetTenant.is_active,
+        status: targetTenant.status,
+        description: targetTenant.description,
+        logo: targetTenant.logo,
+        region: targetTenant.region,
+        domain: targetTenant.domain,
+        enforce_domain: targetTenant.enforce_domain,
+        members: targetTenant.members || 0,
+        created_at: targetTenant.created_at,
+        updated_at: targetTenant.updated_at,
+        created_by_id: targetTenant.created_by_id,
+      },
     };
   }
 }

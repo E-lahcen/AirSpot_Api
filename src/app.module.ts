@@ -71,7 +71,7 @@ import { BrandModule } from './modules/brand/brand.module';
         logging: configService.get<string>('DB_LOGGING') === 'true',
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
-        synchronize: false,
+        synchronize: process.env.NODE_ENV === 'development',
         type: 'postgres',
         cache: {
           duration: 30000, // Cache for 30 seconds
