@@ -14,13 +14,23 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreativeService } from '../services';
+import { CreativeKpiService } from '../services/creative-kpi.service';
 import { CreateCreativeDto, UpdateCreativeDto } from '../dto';
 import { FilterCreativeDto } from '../dto/filter-creative.dto';
 import { AuthGuard } from '../../auth/guards';
 import { AuthenticatedUser, CurrentUser } from '../../auth/decorators';
+import { TenantConnectionService } from '@app/modules/tenant/services/tenant-connection.service';
+import { CreativeKpiDto } from '@app/modules/organisation/dto/organisation-kpi.dto';
 import {
   ApiCreateCreative,
   ApiGetCreatives,
@@ -34,7 +44,11 @@ import {
 @UseGuards(AuthGuard)
 @Controller('creatives')
 export class CreativeController {
-  constructor(private readonly creativeService: CreativeService) {}
+  constructor(
+    private readonly creativeService: CreativeService,
+    private readonly creativeKpiService: CreativeKpiService,
+    private readonly tenantConnection: TenantConnectionService,
+  ) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('video'))
@@ -126,5 +140,27 @@ export class CreativeController {
   @ApiDeleteCreative()
   remove(@Param('id') id: string) {
     return this.creativeService.remove(id);
+  }
+
+  @Get('kpi/organisation')
+  @ApiOperation({
+    summary: 'Get creative KPI for organization',
+    description:
+      'Retrieve comprehensive creative KPI metrics including creative counts by type and brand, top creatives by usage, and statistics',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Creative KPI retrieved successfully',
+    type: CreativeKpiDto,
+  })
+  async getCreativeKpi(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('organisation_id') organisationId: string,
+  ): Promise<CreativeKpiDto> {
+    const manager =
+      await this.tenantConnection.getEntityManagerForOrganization(
+        organisationId,
+      );
+    return this.creativeKpiService.getCreativeKpi(manager);
   }
 }

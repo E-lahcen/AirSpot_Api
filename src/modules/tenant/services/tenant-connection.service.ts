@@ -33,6 +33,34 @@ export class TenantConnectionService {
     return manager.getRepository(entity);
   }
 
+  async getEntityManagerForOrganization(
+    organizationId: string,
+  ): Promise<EntityManager> {
+    // Get the tenant by ID to retrieve its slug
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const tenantRepository = this.dataSource.getRepository('tenants') as any;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+    const tenant = await tenantRepository.findOne({
+      where: { id: organizationId },
+    });
+
+    if (!tenant) {
+      throw new Error(`Organization with ID ${organizationId} not found`);
+    }
+
+    // Generate schema name from slug
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const schema = `tenant_${((tenant.slug as string) || '').replace(/-/g, '_')}`;
+
+    // Create a new query runner for this organization's schema
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    // Set the search_path to the tenant's schema with public as fallback for extensions
+    await queryRunner.query(`SET search_path TO "${schema}", public`);
+
+    return queryRunner.manager;
+  }
+
   async cleanup() {
     if (this.queryRunner) {
       try {
