@@ -59,6 +59,27 @@ export class OrganisationKpiService {
       const adVariationKpi =
         await this.adVariationKpiService.getAdVariationKpi(manager);
 
+      // Get owner information from the tenant's schema
+      let ownerName: string | null = null;
+      try {
+        const User = manager.getRepository('users');
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        const owner = await (User as any).findOne({
+          where: { email: tenant.owner_email },
+        });
+        if (owner) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          ownerName =
+            owner.full_name || (owner.first_name && owner.last_name)
+              ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                `${owner.first_name} ${owner.last_name}`.trim()
+              : null;
+        }
+      } catch (error) {
+        // Owner info is optional, continue without it
+        console.warn('Could not fetch owner info:', error);
+      }
+
       // Get related brands (from public schema)
       const brands = await this.brandRepository.find({
         where: { tenant_id: tenantId },
@@ -70,6 +91,7 @@ export class OrganisationKpiService {
         name: brand.name,
         logo: brand.logo || null,
         description: brand.description || null,
+        created_at: brand.created_at,
       }));
 
       // Get related campaigns
@@ -87,6 +109,7 @@ export class OrganisationKpiService {
           status: string;
           budget_amount: number;
           spend: number;
+          created_at: Date;
         }>
       ).map((campaign) => ({
         id: campaign.id,
@@ -94,6 +117,7 @@ export class OrganisationKpiService {
         status: campaign.status || 'DRAFT',
         budget: campaign.budget_amount || 0,
         spent: campaign.spend || 0,
+        created_at: campaign.created_at,
       }));
 
       // Get related creatives
@@ -121,6 +145,9 @@ export class OrganisationKpiService {
       return {
         organization_id: tenant.id,
         organization_name: tenant.company_name,
+        owner_email: tenant.owner_email,
+        owner_name: ownerName,
+        created_at: tenant.created_at,
         campaigns: campaignKpi,
         creatives: creativeKpi,
         audiences: audienceKpi,

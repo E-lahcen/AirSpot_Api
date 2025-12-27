@@ -27,6 +27,12 @@ export class BrandInfoDto {
     nullable: true,
   })
   description?: string | null;
+
+  @ApiProperty({
+    description: 'Date when brand was created',
+    example: '2025-01-15T10:30:00Z',
+  })
+  created_at: Date;
 }
 
 // Campaign Summary DTO
@@ -69,6 +75,12 @@ export class CampaignSummaryDto {
     example: 2500,
   })
   spent: number;
+
+  @ApiProperty({
+    description: 'Date when campaign was created',
+    example: '2025-01-15T10:30:00Z',
+  })
+  created_at: Date;
 }
 
 // Creative Summary DTO
@@ -383,6 +395,25 @@ export class OrganisationKpiDto {
     example: 'Acme Corp',
   })
   organization_name: string;
+
+  @ApiProperty({
+    description: 'Owner email (contact details)',
+    example: 'owner@acmecorp.com',
+  })
+  owner_email: string;
+
+  @ApiPropertyOptional({
+    description: 'Owner full name',
+    example: 'John Doe',
+    nullable: true,
+  })
+  owner_name?: string | null;
+
+  @ApiProperty({
+    description: 'Date when organization was created',
+    example: '2025-01-15T10:30:00Z',
+  })
+  created_at: Date;
 
   @ApiProperty({
     description: 'Campaign KPI metrics',
